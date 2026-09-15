@@ -201,10 +201,19 @@
     .upgradeBtn.epic:hover { background:#ff0; color:#000; }
 
     #menuBg {
-        position: fixed; inset: 0; z-index: 1; pointer-events: none;
+        position: fixed; inset: 0; z-index: 40; pointer-events: none;
         width: 100%; height: 100%; display: block;
         background: #000;
     }
+    body.menu-space #game {
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    body.menu-space #menuBg {
+        display: block !important;
+        z-index: 40;
+    }
+
     #splash {
         position: fixed; inset: 0; z-index: 300;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -261,9 +270,14 @@
     #menu.space-menu, #creditsScreen.space-menu, #achievementsScreen.space-menu,
     #storeScreen.space-menu, #shipScreen.space-menu, #modeScreen.space-menu,
     #howToScreen.space-menu, #settingsScreen.space-menu {
-        background: rgba(0, 0, 18, 0.55);
-        backdrop-filter: blur(1px);
+        background: rgba(0, 4, 16, 0.28) !important;
+        backdrop-filter: none;
     }
+    /* Keep pause/death more solid for readability */
+    #pauseScreen, #deathScreen, #levelUpScreen, #specialUpScreen, #scrapShopScreen {
+        /* unchanged elsewhere */
+    }
+
 </style>
 </head>
 <body>
@@ -497,7 +511,7 @@
 </div>
 
 
-<div id="version-badge">v0.2.4</div>
+<div id="version-badge">v0.2.5</div>
 <div id="update-banner">
   <p id="update-banner-text">Update available</p>
   <button onclick="reloadForUpdate()">RELOAD</button>
@@ -510,7 +524,7 @@ const ctx = canvas.getContext('2d');
 const W = 2400, H = 1600;
 
 // ==================== VERSION / UPDATE CHECK ====================
-const GAME_VERSION = '0.2.4';
+const GAME_VERSION = '0.2.5';
 // Host version.json next to the game when online. Leave empty for local file play.
 const UPDATE_CHECK_URL = 'https://arthur1134.github.io/StarSmashers/version.json';
 let updateCheckDone = false;
@@ -1918,6 +1932,7 @@ document.addEventListener('keydown', e => {
 document.body.addEventListener('click', () => ensureAudio(), { once: true });
 
 function loop() {
+    refreshMenuSpaceState();
     drawMenuSpace(Date.now());
     requestAnimationFrame(loop);
     if (gameState === 'title') {
@@ -2744,6 +2759,27 @@ function seedMenuSpace() {
         { x: w * 0.5, y: h * 0.75, r: Math.min(w, h) * 0.22, c: 'rgba(80,10,40,0.22)' }
     ];
 }
+
+function setMenuSpaceActive(on) {
+    document.body.classList.toggle('menu-space', !!on);
+    const game = document.getElementById('game');
+    if (game) {
+        if (on) {
+            game.style.visibility = 'hidden';
+        } else if (splashDone) {
+            game.style.visibility = '';
+        }
+    }
+    if (on) {
+        resizeMenuBg();
+        drawMenuSpace(Date.now());
+    }
+}
+function refreshMenuSpaceState() {
+    const on = menuOverlayVisible();
+    setMenuSpaceActive(on);
+}
+
 function menuOverlayVisible() {
     if (!splashDone) return true;
     const ids = ['menu','creditsScreen','achievementsScreen','storeScreen','shipScreen','modeScreen','howToScreen','settingsScreen'];
@@ -2755,7 +2791,9 @@ function menuOverlayVisible() {
 }
 function drawMenuSpace(t) {
     if (!menuBgCtx || !menuBg) return;
-    if (!menuOverlayVisible() && splashDone) return;
+    const spaceOn = document.body.classList.contains('menu-space') || document.body.classList.contains('splash-active') || menuOverlayVisible();
+    if (!spaceOn) return;
+    if (menuBg.width < 2 || menuBg.height < 2) resizeMenuBg();
     const w = menuBg.width, h = menuBg.height;
     menuBgCtx.fillStyle = '#020208';
     menuBgCtx.fillRect(0, 0, w, h);
@@ -2824,6 +2862,7 @@ function dismissSplash() {
     syncVersionBadge();
     checkForUpdate();
     if (typeof updateControlUI === 'function') updateControlUI();
+    refreshMenuSpaceState();
 }
 function setupSplash() {
     markSpaceMenus();
@@ -2832,6 +2871,7 @@ function setupSplash() {
     const sp = document.getElementById('splash');
     if (!sp) { splashDone = true; return; }
     document.body.classList.add('splash-active');
+    setMenuSpaceActive(true);
     // Hard-hide menu and chrome until splash is done
     const menu = document.getElementById('menu');
     if (menu) menu.style.display = 'none';
