@@ -6,7 +6,7 @@
 <style>
     body { margin:0; background:#000; font-family: 'Courier New', monospace; overflow:hidden; color:#0f0; }
     canvas { display:block; margin:0 auto; image-rendering: pixelated; background:#000; }
-    #menu, #deathScreen, #creditsScreen, #achievementsScreen, #storeScreen, #shipScreen, #modeScreen, #pauseScreen, #howToScreen {
+    #menu, #deathScreen, #creditsScreen, #achievementsScreen, #storeScreen, #shipScreen, #modeScreen, #pauseScreen, #howToScreen, #settingsScreen {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,25,0.97); display: none; flex-direction: column;
         align-items: center; justify-content: center; z-index: 100;
@@ -179,6 +179,15 @@
         background: rgba(0,10,20,0.7);
     }
     .howto-block h3 { color: #0ff; margin: 0 0 6px; font-size: 16px; }
+    .ctrl-row { display: flex; gap: 12px; margin: 10px 0 16px; flex-wrap: wrap; justify-content: center; }
+    .ctrl-opt {
+        border: 3px solid #066; background: rgba(0,20,40,0.9); color: #0ff;
+        padding: 12px 16px; cursor: pointer; min-width: 200px; text-align: left;
+    }
+    .ctrl-opt.selected { border-color: #0ff; box-shadow: 0 0 12px #0ff4; }
+    .ctrl-opt .ctrl-name { font-size: 18px; margin-bottom: 4px; }
+    .ctrl-opt .ctrl-desc { font-size: 12px; color: #aaa; }
+
     #howToScreen {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,25,0.97); display: none; flex-direction: column;
@@ -211,9 +220,34 @@
     <button onclick="showShipSelect()">SELECT SHIP</button>
     <button onclick="showStore()">STORE</button>
     <button onclick="showAchievements()">ACHIEVEMENTS</button>
+    <button onclick="showSettings()">SETTINGS</button>
     <button onclick="showHowTo()">HOW TO PLAY</button>
     <button onclick="showCredits()">CREDITS</button>
     <button onclick="resetAllStats()" style="margin-top:18px; border-color:#f66; color:#f66; font-size:14px; width:240px;">RESET ALL STATS</button>
+</div>
+
+
+<!-- SETTINGS -->
+<div id="settingsScreen" style="display:none;">
+    <div style="font-size:36px; color:#0ff; margin-bottom:12px;">SETTINGS</div>
+    <div style="font-size:14px; color:#8f8; margin-bottom:8px;">CONTROL TYPE</div>
+    <div class="ctrl-row">
+        <div class="ctrl-opt" id="ctrlThrust" onclick="setControlScheme('thrust')">
+            <div class="ctrl-name">ROTATE + THRUST</div>
+            <div class="ctrl-desc">A/D rotate · W thrust · S reverse<br>Fire forward (Space / click)<br>Inertia + screen wrap</div>
+        </div>
+        <div class="ctrl-opt" id="ctrlStrafe" onclick="setControlScheme('strafe')">
+            <div class="ctrl-name">WASD + MOUSE</div>
+            <div class="ctrl-desc">WASD / arrows thrust any direction<br>Mouse aims · Click to fire<br>Inertia + edge bounce</div>
+        </div>
+    </div>
+    <div class="vol-row" style="justify-content:center;">
+        <span>VOLUME</span>
+        <input type="range" id="volSliderSettings" min="0" max="100" value="80" oninput="setVolume(this.value/100)">
+        <span id="volLabelSettings">80%</span>
+    </div>
+    <button onclick="toggleMute()" id="muteBtnSettings" style="margin-top:8px;">MUTE: OFF</button>
+    <button onclick="hideSettings()" style="margin-top:18px;">BACK</button>
 </div>
 
 <!-- PAUSE -->
@@ -228,6 +262,9 @@
         <input type="range" id="volSlider" min="0" max="100" value="80" oninput="setVolume(this.value/100)">
         <span id="volLabel">80%</span>
     </div>
+    <div style="font-size:13px;color:#8f8;margin:8px 0 4px;">CONTROLS: <span id="pauseCtrlLabel">ROTATE + THRUST</span></div>
+    <button onclick="cycleControlScheme()" style="width:280px;font-size:14px;">SWITCH CONTROL TYPE</button>
+    <button onclick="openSettingsFromPause()" style="width:280px;font-size:14px;">SETTINGS</button>
     <button onclick="quitToMenu()">QUIT TO MENU</button>
 </div>
 
@@ -332,7 +369,7 @@
 
 <div id="howToScreen">
     <div style="font-size:36px; color:#0ff; margin-bottom:12px;">HOW TO PLAY</div>
-    <div class="howto-block"><h3>CONTROLS</h3>A/D or ←/→ rotate · W/↑ thrust · S/↓ reverse · Hold click (or Space) to fire forward · Esc pause — Asteroids-style drift</div>
+    <div class="howto-block"><h3>CONTROLS</h3>Choose in <b>Settings</b>. <b>Rotate + Thrust:</b> A/D turn, W thrust, S reverse, Space/click fire forward, screen wrap. <b>WASD + Mouse:</b> move any direction, mouse aim, click fire. Esc pause.</div>
     <div class="howto-block"><h3>SURVIVE &amp; LEVEL UP</h3>Kill enemies for XP. Level-ups offer upgrades — rarer picks (pink/yellow) define your build. Bosses drop stars for special upgrades.</div>
     <div class="howto-block"><h3>SCRAP ECONOMY</h3>Enemies drop scrap &amp; crates. Collect floating debris. Pause and open SCRAP SHOP to spend scrap on mid-run boosts (heal, damage, XP, shield).</div>
     <div class="howto-block"><h3>OBJECTIVES</h3>Clear timed missions (survive, collect scrap, kill elites, clear swarms) for scrap bonuses or bonus upgrade chests.</div>
@@ -386,7 +423,7 @@
 </div>
 
 
-<div id="version-badge">v0.2.1</div>
+<div id="version-badge">v0.2.2</div>
 <div id="update-banner">
   <p id="update-banner-text">Update available</p>
   <button onclick="reloadForUpdate()">RELOAD</button>
@@ -399,7 +436,7 @@ const ctx = canvas.getContext('2d');
 const W = 2400, H = 1600;
 
 // ==================== VERSION / UPDATE CHECK ====================
-const GAME_VERSION = '0.2.1';
+const GAME_VERSION = '0.2.2';
 // Host version.json next to the game when online. Leave empty for local file play.
 const UPDATE_CHECK_URL = 'https://arthur1134.github.io/StarSmashers/version.json';
 let updateCheckDone = false;
@@ -505,9 +542,78 @@ function toggleMute() {
     updateMuteUI();
     sfxClick();
 }
+
+// ==================== CONTROL SCHEME ====================
+// 'thrust' = rotate + thrust + wrap; 'strafe' = WASD any-direction + mouse aim + bounce
+let controlScheme = localStorage.getItem('starSmashersControls') || 'thrust';
+if (controlScheme === 'asteroids') controlScheme = 'thrust'; // migrate old key
+if (controlScheme === 'twin') controlScheme = 'strafe';
+if (controlScheme !== 'thrust' && controlScheme !== 'strafe') controlScheme = 'thrust';
+
+function setControlScheme(scheme) {
+    if (scheme !== 'thrust' && scheme !== 'strafe') return;
+    controlScheme = scheme;
+    localStorage.setItem('starSmashersControls', controlScheme);
+    updateControlUI();
+}
+
+function cycleControlScheme() {
+    setControlScheme(controlScheme === 'thrust' ? 'strafe' : 'thrust');
+}
+
+function controlSchemeLabel() {
+    return controlScheme === 'thrust' ? 'ROTATE + THRUST' : 'WASD + MOUSE';
+}
+
+function updateControlUI() {
+    const a = document.getElementById('ctrlThrust');
+    const t = document.getElementById('ctrlStrafe');
+    if (a) a.classList.toggle('selected', controlScheme === 'thrust');
+    if (t) t.classList.toggle('selected', controlScheme === 'strafe');
+    const pl = document.getElementById('pauseCtrlLabel');
+    if (pl) pl.textContent = controlSchemeLabel();
+}
+
+function showSettings() {
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('settingsScreen').style.display = 'flex';
+    updateControlUI();
+    const vs = document.getElementById('volSliderSettings');
+    const vl = document.getElementById('volLabelSettings');
+    if (vs) vs.value = Math.round(soundVolume * 100);
+    if (vl) vl.textContent = Math.round(soundVolume * 100) + '%';
+    updateMuteUI();
+}
+
+function hideSettings() {
+    document.getElementById('settingsScreen').style.display = 'none';
+    if (window._settingsReturnPause) {
+        window._settingsReturnPause = false;
+        updateControlUI();
+    document.getElementById('pauseScreen').style.display = 'flex';
+        updateControlUI();
+        return;
+    }
+    document.getElementById('menu').style.display = 'flex';
+}
+
+function openSettingsFromPause() {
+    document.getElementById('pauseScreen').style.display = 'none';
+    document.getElementById('settingsScreen').style.display = 'flex';
+    window._settingsReturnPause = true;
+    updateControlUI();
+    const vs = document.getElementById('volSliderSettings');
+    const vl = document.getElementById('volLabelSettings');
+    if (vs) vs.value = Math.round(soundVolume * 100);
+    if (vl) vl.textContent = Math.round(soundVolume * 100) + '%';
+}
+
 function updateMuteUI() {
+    const label = soundMuted ? 'MUTE: ON' : 'MUTE: OFF';
     const btn = document.getElementById('muteBtn');
-    if (btn) btn.textContent = soundMuted ? 'MUTE: ON' : 'MUTE: OFF';
+    if (btn) btn.textContent = label;
+    const btn2 = document.getElementById('muteBtnSettings');
+    if (btn2) btn2.textContent = label;
 }
 
 // ==================== META / STORE ====================
@@ -1805,53 +1911,83 @@ function loop() {
         if (regenRate > 0) player.health = Math.min(player.maxHealth, player.health + regenRate / 60);
         if (invulnTimer > 0) invulnTimer -= 1/60;
 
-        // Asteroids physics: rotate + thrust + inertia (screen wrap)
+        // Player movement — scheme from Settings (thrust | strafe)
         if (player.vx == null) { player.vx = 0; player.vy = 0; }
         if (player.angle == null) player.angle = -Math.PI / 2;
-        const rotSpeed = 0.085; // rad/frame
-        if (keys['a'] || keys['arrowleft']) player.angle -= rotSpeed;
-        if (keys['d'] || keys['arrowright']) player.angle += rotSpeed;
-        const thrust = player.speed * 0.20;
-        const reverseThrust = player.speed * 0.10;
-        const maxSpeed = player.speed * 1.35;
-        const drag = 0.992; // near-vacuum drift like Asteroids
-        let thrusting = false;
-        let fx = Math.cos(player.angle), fy = Math.sin(player.angle);
-        if (keys['w'] || keys['arrowup']) {
-            player.vx += fx * thrust;
-            player.vy += fy * thrust;
-            emitThrusters(fx, fy);
-            thrusting = true;
-            player.thrustX = fx;
-            player.thrustY = fy;
-        } else if (keys['s'] || keys['arrowdown']) {
-            // light reverse burn (classic Asteroids had none; helpful here)
-            player.vx -= fx * reverseThrust;
-            player.vy -= fy * reverseThrust;
-            emitThrusters(-fx, -fy);
-            thrusting = true;
-            player.thrustX = -fx;
-            player.thrustY = -fy;
+        if (controlScheme === 'thrust') {
+            const rotSpeed = 0.085;
+            if (keys['a'] || keys['arrowleft']) player.angle -= rotSpeed;
+            if (keys['d'] || keys['arrowright']) player.angle += rotSpeed;
+            const thrust = player.speed * 0.20;
+            const reverseThrust = player.speed * 0.10;
+            const maxSpeed = player.speed * 1.35;
+            const drag = 0.992;
+            let thrusting = false;
+            const fx = Math.cos(player.angle), fy = Math.sin(player.angle);
+            if (keys['w'] || keys['arrowup']) {
+                player.vx += fx * thrust;
+                player.vy += fy * thrust;
+                emitThrusters(fx, fy);
+                thrusting = true;
+                player.thrustX = fx; player.thrustY = fy;
+            } else if (keys['s'] || keys['arrowdown']) {
+                player.vx -= fx * reverseThrust;
+                player.vy -= fy * reverseThrust;
+                emitThrusters(-fx, -fy);
+                thrusting = true;
+                player.thrustX = -fx; player.thrustY = -fy;
+            }
+            player.thrusting = thrusting;
+            const spd = Math.hypot(player.vx, player.vy);
+            if (spd > maxSpeed) {
+                player.vx = (player.vx / spd) * maxSpeed;
+                player.vy = (player.vy / spd) * maxSpeed;
+            }
+            player.vx *= drag; player.vy *= drag;
+            if (Math.abs(player.vx) < 0.015) player.vx = 0;
+            if (Math.abs(player.vy) < 0.015) player.vy = 0;
+            player.x += player.vx; player.y += player.vy;
+            if (player.x < -player.size) player.x = W + player.size;
+            if (player.x > W + player.size) player.x = -player.size;
+            if (player.y < -player.size) player.y = H + player.size;
+            if (player.y > H + player.size) player.y = -player.size;
+            resolveAsteroidCollision(player, true);
+        } else {
+            // WASD + mouse: thrust any direction, mouse aims
+            let tx = 0, ty = 0;
+            if (keys['w'] || keys['arrowup']) ty -= 1;
+            if (keys['s'] || keys['arrowdown']) ty += 1;
+            if (keys['a'] || keys['arrowleft']) tx -= 1;
+            if (keys['d'] || keys['arrowright']) tx += 1;
+            const thrust = player.speed * 0.22;
+            const maxSpeed = player.speed * 1.15;
+            const drag = 0.965;
+            if (tx || ty) {
+                const len = Math.hypot(tx, ty);
+                player.vx += (tx / len) * thrust;
+                player.vy += (ty / len) * thrust;
+                emitThrusters(tx / len, ty / len);
+                player.thrusting = true;
+                player.thrustX = tx / len; player.thrustY = ty / len;
+            } else {
+                player.thrusting = false;
+            }
+            const spd = Math.hypot(player.vx, player.vy);
+            if (spd > maxSpeed) {
+                player.vx = (player.vx / spd) * maxSpeed;
+                player.vy = (player.vy / spd) * maxSpeed;
+            }
+            player.vx *= drag; player.vy *= drag;
+            if (Math.abs(player.vx) < 0.02) player.vx = 0;
+            if (Math.abs(player.vy) < 0.02) player.vy = 0;
+            player.x += player.vx; player.y += player.vy;
+            if (player.x < 25) { player.x = 25; player.vx *= -0.35; }
+            if (player.x > W - 25) { player.x = W - 25; player.vx *= -0.35; }
+            if (player.y < 25) { player.y = 25; player.vy *= -0.35; }
+            if (player.y > H - 25) { player.y = H - 25; player.vy *= -0.35; }
+            resolveAsteroidCollision(player, true);
+            player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
         }
-        player.thrusting = thrusting;
-        const spd = Math.hypot(player.vx, player.vy);
-        if (spd > maxSpeed) {
-            player.vx = (player.vx / spd) * maxSpeed;
-            player.vy = (player.vy / spd) * maxSpeed;
-        }
-        player.vx *= drag;
-        player.vy *= drag;
-        if (Math.abs(player.vx) < 0.015) player.vx = 0;
-        if (Math.abs(player.vy) < 0.015) player.vy = 0;
-        player.x += player.vx;
-        player.y += player.vy;
-        // Screen wrap (Asteroids)
-        if (player.x < -player.size) player.x = W + player.size;
-        if (player.x > W + player.size) player.x = -player.size;
-        if (player.y < -player.size) player.y = H + player.size;
-        if (player.y > H + player.size) player.y = -player.size;
-        resolveAsteroidCollision(player, true);
-        // Facing is ship rotation; weapons fire along player.angle
 
         for (let i = stars_drop.length - 1; i >= 0; i--) {
             const s = stars_drop[i];

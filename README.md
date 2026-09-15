@@ -4,7 +4,7 @@ HTML5 top-down survival shooter — waves, XP level-ups, timed bosses, ship sele
 
 ## Controls
 
-Asteroids-style: **A/D** rotate, **W** thrust, **S** reverse, **Space**/click fire forward, screen wrap.
+Control types in Settings: **Rotate + Thrust** (A/D turn, W thrust, S reverse, Space/click fire, wrap) or **WASD + Mouse** (strafe + aim).
 
 ## Play
 
