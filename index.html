@@ -6,7 +6,7 @@
 <style>
     body { margin:0; background:#000; font-family: 'Courier New', monospace; overflow:hidden; color:#0f0; }
     canvas { display:block; margin:0 auto; image-rendering: pixelated; background:#000; }
-    #menu, #deathScreen, #creditsScreen, #achievementsScreen, #storeScreen, #shipScreen, #modeScreen, #pauseScreen {
+    #menu, #deathScreen, #creditsScreen, #achievementsScreen, #storeScreen, #shipScreen, #modeScreen, #pauseScreen, #howToScreen {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,25,0.97); display: none; flex-direction: column;
         align-items: center; justify-content: center; z-index: 100;
@@ -155,6 +155,40 @@
     }
     #update-banner p { color: #0ff; font-size: 14px; margin: 0 0 10px; }
     #update-banner button { width: auto; margin: 4px; padding: 8px 18px; font-size: 14px; }
+
+    #objectiveHud {
+        position: absolute; top: 78px; left: 50%; transform: translateX(-50%);
+        color: #ff8; font-size: 14px; z-index: 50; text-align: center;
+        text-shadow: 0 0 8px #840; pointer-events: none; max-width: 70%;
+    }
+    #scrapShopScreen {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,10,25,0.92); display: none; flex-direction: column;
+        align-items: center; justify-content: center; z-index: 110;
+        overflow-y: auto;
+    }
+    .scrap-buy {
+        width: 440px; padding: 12px 18px; margin: 8px; font-size: 16px;
+        text-align: left; border-color: #fa0; color: #fa0;
+        background: rgba(0,0,0,0.75);
+    }
+    .scrap-buy:hover { background:#fa0; color:#000; }
+    .howto-block {
+        width: min(640px, 92%); text-align: left; font-size: 14px; color: #ccc;
+        line-height: 1.45; margin: 8px 0; border: 1px solid #044; padding: 12px 16px;
+        background: rgba(0,10,20,0.7);
+    }
+    .howto-block h3 { color: #0ff; margin: 0 0 6px; font-size: 16px; }
+    #howToScreen {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,25,0.97); display: none; flex-direction: column;
+        align-items: center; justify-content: center; z-index: 100;
+        overflow-y: auto;
+    }
+    .upgradeBtn.rare { border-color: #f0f; color: #f0f; }
+    .upgradeBtn.rare:hover { background:#f0f; color:#000; }
+    .upgradeBtn.epic { border-color: #ff0; color: #ff0; }
+    .upgradeBtn.epic:hover { background:#ff0; color:#000; }
 </style>
 </head>
 <body>
@@ -177,14 +211,17 @@
     <button onclick="showShipSelect()">SELECT SHIP</button>
     <button onclick="showStore()">STORE</button>
     <button onclick="showAchievements()">ACHIEVEMENTS</button>
+    <button onclick="showHowTo()">HOW TO PLAY</button>
     <button onclick="showCredits()">CREDITS</button>
     <button onclick="resetAllStats()" style="margin-top:18px; border-color:#f66; color:#f66; font-size:14px; width:240px;">RESET ALL STATS</button>
 </div>
 
 <!-- PAUSE -->
 <div id="pauseScreen">
-    <div style="font-size:42px; color:#0ff; margin-bottom:20px;">PAUSED</div>
+    <div style="font-size:42px; color:#0ff; margin-bottom:12px;">PAUSED</div>
+    <div id="pauseScrap" style="font-size:18px; color:#fa0; margin-bottom:14px;">SCRAP: 0</div>
     <button onclick="resumeGame()">RESUME</button>
+    <button onclick="openScrapShop()" style="border-color:#fa0; color:#fa0;">SCRAP SHOP</button>
     <button onclick="toggleMute()" id="muteBtn">MUTE: OFF</button>
     <div class="vol-row">
         <span>VOLUME</span>
@@ -279,13 +316,41 @@
 </div>
 
 <div id="deathScreen">
-    <div style="font-size:56px; color:#f00; margin-bottom:16px;">GAME OVER</div>
-    <div style="font-size:22px; margin:6px;">Survived: <span id="finalTimeDisplay">0</span>s</div>
-    <div style="font-size:22px; margin:6px;">Score: <span id="finalScoreDisplay">0</span></div>
-    <div style="font-size:22px; margin:6px;">Level: <span id="finalLevelDisplay">1</span></div>
+    <div style="font-size:56px; color:#f00; margin-bottom:12px;">GAME OVER</div>
+    <div style="font-size:22px; margin:4px;">Survived: <span id="finalTimeDisplay">0</span>s</div>
+    <div style="font-size:22px; margin:4px;">Score: <span id="finalScoreDisplay">0</span></div>
+    <div style="font-size:22px; margin:4px;">Level: <span id="finalLevelDisplay">1</span></div>
+    <div style="font-size:16px; margin:8px; color:#fa0; max-width:520px; text-align:center; line-height:1.5;">
+        Scrap collected: <span id="finalScrap">0</span> · Objectives: <span id="finalObjectives">0</span><br>
+        Elites killed: <span id="finalElites">0</span> · Kills: <span id="finalKills">0</span>
+    </div>
     <div style="font-size:20px; margin:10px; color:#0ff;">Credits earned: +<span id="creditsEarned">0</span></div>
-    <button onclick="returnToMenu()" style="margin-top:22px;">BACK TO MAIN MENU</button>
-    <div style="margin-top:18px; font-size:14px; color:#666;">Press R to try again</div>
+    <button onclick="returnToMenu()" style="margin-top:18px;">BACK TO MAIN MENU</button>
+    <div style="margin-top:14px; font-size:14px; color:#666;">Press R to try again</div>
+</div>
+
+
+<div id="howToScreen">
+    <div style="font-size:36px; color:#0ff; margin-bottom:12px;">HOW TO PLAY</div>
+    <div class="howto-block"><h3>CONTROLS</h3>WASD / Arrows move · Mouse aim · Hold click to fire · Esc pause</div>
+    <div class="howto-block"><h3>SURVIVE &amp; LEVEL UP</h3>Kill enemies for XP. Level-ups offer upgrades — rarer picks (pink/yellow) define your build. Bosses drop stars for special upgrades.</div>
+    <div class="howto-block"><h3>SCRAP ECONOMY</h3>Enemies drop scrap &amp; crates. Collect floating debris. Pause and open SCRAP SHOP to spend scrap on mid-run boosts (heal, damage, XP, shield).</div>
+    <div class="howto-block"><h3>OBJECTIVES</h3>Clear timed missions (survive, collect scrap, kill elites, clear swarms) for scrap bonuses or bonus upgrade chests.</div>
+    <div class="howto-block"><h3>EVENTS</h3>Watch for banners: asteroid storms, pirate raids, supply drops, and more. Adapt quickly.</div>
+    <div class="howto-block"><h3>META</h3>Earn credits between runs for permanent store upgrades. Unlock ships via achievements.</div>
+    <button onclick="hideHowTo()" style="margin:18px 0 40px;">BACK</button>
+</div>
+
+<div id="scrapShopScreen">
+    <div style="font-size:36px; color:#fa0; margin-bottom:6px;">SCRAP SHOP</div>
+    <div id="scrapShopBalance" style="font-size:18px; color:#fa0; margin-bottom:14px;">SCRAP: 0</div>
+    <div style="font-size:12px; color:#888; margin-bottom:10px;">Spend scrap mid-run · Esc / Back returns to pause</div>
+    <button class="scrap-buy" onclick="buyScrapItem('heal')">REPAIR KIT — 25 scrap · Heal 35 HP</button>
+    <button class="scrap-buy" onclick="buyScrapItem('dmg')">OVERCLOCK CHIP — 40 scrap · +1 damage</button>
+    <button class="scrap-buy" onclick="buyScrapItem('xp')">DATA CORE — 30 scrap · +50 XP</button>
+    <button class="scrap-buy" onclick="buyScrapItem('shield')">HARD LIGHT — 50 scrap · 6s invuln</button>
+    <button class="scrap-buy" onclick="buyScrapItem('rate')">COOLANT — 35 scrap · Faster fire</button>
+    <button onclick="closeScrapShop()" style="margin-top:16px;">BACK</button>
 </div>
 
 <canvas id="game" width="2400" height="1600"></canvas>
@@ -295,10 +360,12 @@
     <div>Score: <span id="score">0</span></div>
     <div>Wave: <span id="wave">1</span></div>
     <div>Level: <span id="playerLevel">1</span></div>
+    <div style="margin-top:4px; color:#fa0;">Scrap: <span id="scrapHud">0</span></div>
     <div style="margin-top:4px; color:#f88;">Next Boss: <span id="bossTimer">120</span>s</div>
     <div id="modeLabel" style="margin-top:4px; color:#0f8;"></div>
     <div id="runMeta" style="margin-top:6px; color:#8f8; font-size:12px;"></div>
 </div>
+<div id="objectiveHud">OBJECTIVE: —</div>
 
 <div id="weaponInfo">
     <div style="color:#0ff; margin-bottom:3px;">SHIP: <span id="shipName">Classic</span></div>
@@ -319,7 +386,7 @@
 </div>
 
 
-<div id="version-badge">v0.1.0</div>
+<div id="version-badge">v0.2.0</div>
 <div id="update-banner">
   <p id="update-banner-text">Update available</p>
   <button onclick="reloadForUpdate()">RELOAD</button>
@@ -332,7 +399,7 @@ const ctx = canvas.getContext('2d');
 const W = 2400, H = 1600;
 
 // ==================== VERSION / UPDATE CHECK ====================
-const GAME_VERSION = '0.1.0';
+const GAME_VERSION = '0.2.0';
 // Host version.json next to the game when online. Leave empty for local file play.
 const UPDATE_CHECK_URL = 'https://arthur1134.github.io/StarSmashers/version.json';
 let updateCheckDone = false;
@@ -632,7 +699,7 @@ const ACHIEVEMENTS = [
 
 let unlockedAch = {};
 try { unlockedAch = JSON.parse(localStorage.getItem('starSmashersAch') || '{}'); } catch (e) {}
-let runStats = { kills: 0, bossesKilled: 0, starsCollected: 0 };
+let runStats = { kills: 0, bossesKilled: 0, starsCollected: 0, scrapCollected: 0, objectivesCleared: 0, elitesKilled: 0 };
 
 function saveAchievements() { localStorage.setItem('starSmashersAch', JSON.stringify(unlockedAch)); }
 
@@ -778,16 +845,20 @@ function pauseGame() {
     gameState = 'paused';
     updateMuteUI();
     setVolume(soundVolume);
+    updateScrapHud();
     document.getElementById('pauseScreen').style.display = 'flex';
 }
 function resumeGame() {
     sfxClick();
     document.getElementById('pauseScreen').style.display = 'none';
+    document.getElementById('howToScreen').style.display = 'none';
+    document.getElementById('scrapShopScreen').style.display = 'none';
     gameState = 'playing';
 }
 function quitToMenu() {
     sfxClick();
     document.getElementById('pauseScreen').style.display = 'none';
+    document.getElementById('scrapShopScreen').style.display = 'none';
     document.getElementById('levelUpScreen').style.display = 'none';
     document.getElementById('specialUpScreen').style.display = 'none';
     document.getElementById('bossBar').style.display = 'none';
@@ -807,14 +878,18 @@ let weapon = { level: 1, fireRate: 140, damage: 1, shots: 1, spread: 0 };
 let playerLevel = 1, xp = 0, xpToNext = 50;
 let pendingUpgrades = [], pendingSpecials = [];
 let keys = {}, mouse = { x: 0, y: 0, down: false };
-let bullets = [], enemies = [], bossBullets = [], enemyBullets = [], particles = [], asteroids = [], stars_drop = [];
+let bullets = [], enemies = [], bossBullets = [], enemyBullets = [], particles = [], asteroids = [], stars_drop = [], scrapDrops = [];
+let scrap = 0, scrapMagnet = 0, lastScrapSpawner = 0;
+let currentObjective = null, objectiveCooldown = 8;
+let pierceShots = 0, lifesteal = 0, critChance = 0, orbitDrones = 0;
+let ownedUpgradeIds = [];
 let timeSurvived = 0, wave = 1;
 let lastShot = 0, lastSpawn = 0, lastAsteroidSpawn = 0;
 let boss = null, screenShake = 0, screenFlash = 0, laserActive = false;
 let hitStop = 0; // brief freeze frames on big hits
 let bossSpawnTimer = 120, bossesSpawned = 0;
 const BOSS_COLORS = ['#f33', '#f3f', '#3ff', '#ff3', '#f93', '#3f3', '#93f', '#f66'];
-const BOSS_PATTERNS = ['triple', 'spiral', 'charge', 'orbit', 'minion'];
+const BOSS_PATTERNS = ['triple', 'spiral', 'charge', 'orbit', 'minion', 'nova'];
 const SPEED_CAP_TIME = 240;
 let xpMultiplier = 1, regenRate = 0, invulnTimer = 0;
 let hardMult = 1;
@@ -831,12 +906,20 @@ for (let i = 0; i < 450; i++) {
 }
 
 const UPGRADE_POOL = [
-    { id: 'rapid', name: 'RAPID FIRE', desc: 'Faster shooting rate' },
-    { id: 'multishot', name: 'MULTI SHOT', desc: '+1 projectile / laser beam' },
-    { id: 'damage', name: 'DAMAGE UP', desc: '+1 damage per hit' },
-    { id: 'health', name: 'MAX HEALTH', desc: '+25 max HP & heal 25' },
-    { id: 'speed', name: 'ENGINE BOOST', desc: '+0.6 movement speed' },
-    { id: 'heal', name: 'REPAIR SYSTEMS', desc: 'Restore 40 health' }
+    { id: 'rapid', name: 'RAPID FIRE', desc: 'Faster shooting rate', rarity: 'common' },
+    { id: 'multishot', name: 'MULTI SHOT', desc: '+1 projectile / laser beam', rarity: 'common' },
+    { id: 'damage', name: 'DAMAGE UP', desc: '+1 damage per hit', rarity: 'common' },
+    { id: 'health', name: 'MAX HEALTH', desc: '+25 max HP & heal 25', rarity: 'common' },
+    { id: 'speed', name: 'ENGINE BOOST', desc: '+0.6 movement speed', rarity: 'common' },
+    { id: 'heal', name: 'REPAIR SYSTEMS', desc: 'Restore 40 health', rarity: 'common' },
+    { id: 'scavenger', name: 'SCAVENGER', desc: '+35% scrap from drops', rarity: 'rare' },
+    { id: 'magnet_scrap', name: 'SCRAP MAGNET', desc: 'Pull scrap from farther away', rarity: 'rare' },
+    { id: 'pierce_shot', name: 'PIERCING ROUNDS', desc: 'Bullets pierce +1 enemy', rarity: 'rare' },
+    { id: 'lifesteal', name: 'SIPHON', desc: 'Heal 2 HP on each kill', rarity: 'rare' },
+    { id: 'crit', name: 'TARGETING AI', desc: '+15% critical hit chance', rarity: 'rare' },
+    { id: 'glass', name: 'GLASS CANNON', desc: '+3 dmg, −20 max HP', rarity: 'epic' },
+    { id: 'overclock', name: 'OVERCLOCK', desc: 'Big fire-rate boost, −10 max HP', rarity: 'epic' },
+    { id: 'drone', name: 'ORBITAL DRONE', desc: 'Orbiting drone damages foes', rarity: 'epic' }
 ];
 const SPECIAL_POOL = [
     { id: 'overcharge', name: 'OVERCHARGE', desc: '+3 damage & +2 shots' },
@@ -846,7 +929,9 @@ const SPECIAL_POOL = [
     { id: 'pierce', name: 'ARMOR PIERCE', desc: '+4 damage' },
     { id: 'regen', name: 'NANO REGEN', desc: 'Slowly regenerate HP over time' },
     { id: 'magnet', name: 'XP MAGNET', desc: '+50% XP from kills' },
-    { id: 'shield', name: 'TEMP SHIELD', desc: 'Invulnerable for 8 seconds' }
+    { id: 'shield', name: 'TEMP SHIELD', desc: 'Invulnerable for 8 seconds' },
+    { id: 'scrap_haul', name: 'SALVAGE HAUL', desc: '+80 scrap instantly' },
+    { id: 'drone_wing', name: 'DRONE WING', desc: '+2 orbital drones' }
 ];
 
 function triggerScreenFlash(i = 0.55) { screenFlash = i; }
@@ -929,13 +1014,50 @@ function updateXPBar() {
     document.getElementById('xpNeeded').textContent = xpToNext;
 }
 
+function rollUpgradeChoice() {
+    const weights = { common: 1, rare: 0.42, epic: 0.16 };
+    const pool = UPGRADE_POOL.filter(u => !ownedUpgradeIds.includes(u.id) || ['rapid','multishot','damage','health','speed','heal','crit','lifesteal','pierce_shot','scavenger'].includes(u.id));
+    const use = pool.length ? pool : UPGRADE_POOL;
+    const picks = [];
+    const used = new Set();
+    for (let n = 0; n < 3; n++) {
+        let total = 0;
+        const cand = [];
+        for (const u of use) {
+            if (used.has(u.id)) continue;
+            const w = weights[u.rarity || 'common'] || 1;
+            cand.push({ u, w });
+            total += w;
+        }
+        if (!cand.length) break;
+        let r = Math.random() * total;
+        for (const c of cand) {
+            r -= c.w;
+            if (r <= 0) { picks.push(c.u); used.add(c.u.id); break; }
+        }
+    }
+    while (picks.length < 3) {
+        const u = UPGRADE_POOL[Math.floor(Math.random()*UPGRADE_POOL.length)];
+        if (!used.has(u.id)) { picks.push(u); used.add(u.id); }
+        else picks.push(u);
+        if (picks.length > 10) break;
+    }
+    return picks.slice(0, 3);
+}
+function formatUpgradeBtn(u) {
+    const tag = u.rarity === 'epic' ? '★ ' : u.rarity === 'rare' ? '◆ ' : '';
+    return tag + u.name + ' — ' + u.desc;
+}
+function styleUpgradeBtn(el, u) {
+    el.className = 'upgradeBtn' + (u.rarity === 'epic' ? ' epic' : u.rarity === 'rare' ? ' rare' : '');
+    el.textContent = formatUpgradeBtn(u);
+}
 function showLevelUp() {
     gameState = 'levelup';
-    const shuffled = [...UPGRADE_POOL].sort(() => Math.random() - 0.5);
-    pendingUpgrades = shuffled.slice(0, 3);
-    document.getElementById('upgrade1').textContent = pendingUpgrades[0].name + ' — ' + pendingUpgrades[0].desc;
-    document.getElementById('upgrade2').textContent = pendingUpgrades[1].name + ' — ' + pendingUpgrades[1].desc;
-    document.getElementById('upgrade3').textContent = pendingUpgrades[2].name + ' — ' + pendingUpgrades[2].desc;
+    pendingUpgrades = rollUpgradeChoice();
+    styleUpgradeBtn(document.getElementById('upgrade1'), pendingUpgrades[0]);
+    styleUpgradeBtn(document.getElementById('upgrade2'), pendingUpgrades[1]);
+    styleUpgradeBtn(document.getElementById('upgrade3'), pendingUpgrades[2]);
     document.getElementById('levelUpScreen').style.display = 'flex';
 }
 function pickUpgrade(idx) {
@@ -962,6 +1084,7 @@ function pickUpgrade(idx) {
 }
 function applyLevelUpgrade(id) {
     weapon.level++;
+    ownedUpgradeIds.push(id);
     switch (id) {
         case 'rapid': weapon.fireRate = Math.max(40, weapon.fireRate - 22); break;
         case 'multishot': weapon.shots += 1; weapon.spread = Math.max(weapon.spread, 0.20); break;
@@ -969,6 +1092,14 @@ function applyLevelUpgrade(id) {
         case 'health': player.maxHealth += 25; player.health = Math.min(player.maxHealth, player.health + 25); break;
         case 'speed': player.speed += 0.6; break;
         case 'heal': player.health = Math.min(player.maxHealth, player.health + 40); break;
+        case 'scavenger': scrapMagnet = Math.max(scrapMagnet, 0); player.scrapBonus = (player.scrapBonus || 0) + 0.35; break;
+        case 'magnet_scrap': scrapMagnet += 90; break;
+        case 'pierce_shot': pierceShots += 1; break;
+        case 'lifesteal': lifesteal += 2; break;
+        case 'crit': critChance = Math.min(0.55, critChance + 0.15); break;
+        case 'glass': weapon.damage += 3; player.maxHealth = Math.max(40, player.maxHealth - 20); player.health = Math.min(player.health, player.maxHealth); break;
+        case 'overclock': weapon.fireRate = Math.max(32, weapon.fireRate - 40); player.maxHealth = Math.max(40, player.maxHealth - 10); player.health = Math.min(player.health, player.maxHealth); break;
+        case 'drone': orbitDrones += 1; break;
     }
     createExplosion(player.x, player.y - 30, '#0ff', 18);
     updateUpgradeUI();
@@ -1003,6 +1134,8 @@ function applySpecial(id) {
         case 'regen': regenRate += 0.8; break;
         case 'magnet': xpMultiplier += 0.5; break;
         case 'shield': invulnTimer = 8; break;
+        case 'scrap_haul': addScrap(80); break;
+        case 'drone_wing': orbitDrones += 2; break;
     }
     createExplosion(player.x, player.y - 40, '#ff0', 30);
     updateUpgradeUI();
@@ -1017,20 +1150,261 @@ function updateUpgradeUI() {
     if (player.speed > 5.8) html += `SPEED<br>`;
     if (regenRate > 0) html += `REGEN<br>`;
     if (xpMultiplier > 1) html += `XP x${xpMultiplier.toFixed(1)}<br>`;
+    if (pierceShots > 0) html += `PIERCE x${pierceShots}<br>`;
+    if (critChance > 0) html += `CRIT ${(critChance*100)|0}%<br>`;
+    if (lifesteal > 0) html += `SIPHON<br>`;
+    if (orbitDrones > 0) html += `DRONES x${orbitDrones}<br>`;
+    if (player.scrapBonus) html += `SCRAP +${Math.round(player.scrapBonus*100)}%<br>`;
     document.getElementById('upgradeList').innerHTML = html;
 }
 
 function registerKill(e) {
-    const base = e.type==='tank'?250:e.type==='fast'?80:e.type==='sniper'?150:e.type==='swarm'?40:110;
+    const base = e.type==='tank'?250:e.type==='fast'?80:e.type==='sniper'?150:e.type==='swarm'?40:e.type==='dasher'?160:e.type==='shield'?200:e.type==='splitter'?140:110;
     player.score += base;
     runStats.kills++;
+    if (e.elite || e.type === 'tank' || e.type === 'shield' || e.type === 'dasher') runStats.elitesKilled++;
     sfxKill();
     gainXP(e.xpValue || 12);
-    createExplosion(e.x, e.y, '#f80', e.type === 'tank' ? 36 : 24);
-    // Light feedback only on tanks — avoid stutter on rapid kills
-    if (e.type === 'tank') screenShake = Math.max(screenShake, 8);
+    createExplosion(e.x, e.y, '#f80', e.type === 'tank' || e.type === 'shield' ? 36 : 24);
+    if (e.type === 'tank' || e.type === 'shield') screenShake = Math.max(screenShake, 8);
     else if (e.type !== 'swarm') screenShake = Math.max(screenShake, 3);
+    if (lifesteal > 0) {
+        player.health = Math.min(player.maxHealth, player.health + lifesteal);
+        updateHealthBar();
+    }
+    // Scrap drops
+    let scrapChance = e.type === 'swarm' ? 0.22 : e.type === 'tank' || e.type === 'shield' ? 0.85 : 0.55;
+    if (Math.random() < scrapChance) {
+        const amt = e.type === 'tank' || e.type === 'shield' ? (8 + Math.floor(Math.random()*8)) :
+            e.type === 'swarm' ? (1 + Math.floor(Math.random()*2)) : (3 + Math.floor(Math.random()*5));
+        dropScrap(e.x, e.y, amt, e.type === 'tank' || e.type === 'shield' || Math.random() < 0.12);
+    }
+    // Splitter: spawn children
+    if (e.type === 'splitter' && !e._splitDone) {
+        e._splitDone = true;
+        for (let s = 0; s < 2; s++) {
+            const ang = Math.random() * Math.PI * 2;
+            enemies.push({
+                x: e.x + Math.cos(ang)*18, y: e.y + Math.sin(ang)*18,
+                size: 10, speed: e.speed * 1.25, health: 1, maxHealth: 1,
+                color: '#f84', type: 'swarm', flash: 0, xpValue: 3, shootTimer: 0
+            });
+        }
+    }
+    noteObjectiveKill(e);
     checkAchievements();
+}
+
+function sfxScrap() { playTone(720, 0.05, 'sine', 0.05); playTone(980, 0.07, 'sine', 0.04); }
+
+function updateScrapHud() {
+    const el = document.getElementById('scrapHud');
+    if (el) el.textContent = scrap;
+    const p = document.getElementById('pauseScrap');
+    if (p) p.textContent = 'SCRAP: ' + scrap;
+    const s = document.getElementById('scrapShopBalance');
+    if (s) s.textContent = 'SCRAP: ' + scrap;
+}
+
+function addScrap(n) {
+    const bonus = 1 + (player.scrapBonus || 0);
+    const gained = Math.max(1, Math.floor(n * bonus));
+    scrap += gained;
+    runStats.scrapCollected += gained;
+    updateScrapHud();
+    noteObjectiveScrap(gained);
+}
+
+function dropScrap(x, y, amount, isCrate) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 0.6 + Math.random() * 1.8;
+    scrapDrops.push({
+        x, y, amount: Math.max(1, amount), life: 700 + Math.random()*200,
+        vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+        kind: isCrate ? 'crate' : 'scrap', pulse: Math.random()*Math.PI*2
+    });
+}
+
+function spawnMapScrap() {
+    const x = 80 + Math.random() * (W - 160);
+    const y = 80 + Math.random() * (H - 160);
+    dropScrap(x, y, 4 + Math.floor(Math.random()*6), Math.random() < 0.3);
+}
+
+function tickScrapDrops(dt) {
+    const pullR = 55 + scrapMagnet;
+    for (let i = scrapDrops.length - 1; i >= 0; i--) {
+        const s = scrapDrops[i];
+        s.life -= 1;
+        s.pulse += 0.1;
+        s.vx *= 0.98; s.vy *= 0.98;
+        s.x += s.vx; s.y += s.vy;
+        const dx = player.x - s.x, dy = player.y - s.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        if (dist < pullR) {
+            const pull = scrapMagnet > 0 ? 3.2 : 2.2;
+            s.x += (dx / dist) * pull;
+            s.y += (dy / dist) * pull;
+        }
+        if (dist < player.size + (s.kind === 'crate' ? 16 : 10)) {
+            addScrap(s.kind === 'crate' ? s.amount + 6 : s.amount);
+            sfxScrap();
+            createExplosion(s.x, s.y, s.kind === 'crate' ? '#fa0' : '#fc6', s.kind === 'crate' ? 14 : 8);
+            scrapDrops.splice(i, 1);
+            continue;
+        }
+        if (s.life <= 0) scrapDrops.splice(i, 1);
+    }
+}
+
+function drawScrapDrops() {
+    for (const s of scrapDrops) {
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        const pulse = 1 + Math.sin(s.pulse) * 0.12;
+        ctx.scale(pulse, pulse);
+        if (s.kind === 'crate') {
+            ctx.shadowBlur = 12; ctx.shadowColor = '#fa0';
+            ctx.fillStyle = '#a60';
+            ctx.fillRect(-10, -10, 20, 20);
+            ctx.strokeStyle = '#fa0'; ctx.lineWidth = 2;
+            ctx.strokeRect(-10, -10, 20, 20);
+            ctx.fillStyle = '#fc6';
+            ctx.fillRect(-3, -12, 6, 6);
+        } else {
+            ctx.shadowBlur = 10; ctx.shadowColor = '#fc6';
+            ctx.fillStyle = '#fc6';
+            ctx.beginPath();
+            ctx.moveTo(0, -6); ctx.lineTo(5, 0); ctx.lineTo(0, 6); ctx.lineTo(-5, 0);
+            ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+// ---- Objectives ----
+const OBJECTIVE_DEFS = [
+    { id: 'survive', make: () => ({ text: 'Survive 45 seconds', target: 45, progress: 0, kind: 'time', reward: 'scrap' }) },
+    { id: 'scrap', make: () => ({ text: 'Collect 40 scrap', target: 40, progress: 0, kind: 'scrap', reward: 'chest' }) },
+    { id: 'elite', make: () => ({ text: 'Destroy 3 elites', target: 3, progress: 0, kind: 'elite', reward: 'scrap' }) },
+    { id: 'swarm', make: () => ({ text: 'Clear 20 swarm drones', target: 20, progress: 0, kind: 'swarm', reward: 'chest' }) },
+    { id: 'kills', make: () => ({ text: 'Destroy 25 enemies', target: 25, progress: 0, kind: 'kills', reward: 'scrap' }) }
+];
+
+function updateObjectiveHud() {
+    const el = document.getElementById('objectiveHud');
+    if (!el) return;
+    if (!currentObjective) { el.textContent = 'OBJECTIVE: awaiting…'; return; }
+    const o = currentObjective;
+    el.textContent = `OBJECTIVE: ${o.text}  (${Math.min(o.progress, o.target)}/${o.target})`;
+}
+
+function startObjective() {
+    const def = OBJECTIVE_DEFS[Math.floor(Math.random() * OBJECTIVE_DEFS.length)];
+    currentObjective = def.make();
+    currentObjective.id = def.id;
+    if (currentObjective.kind === 'time') currentObjective._t0 = timeSurvived;
+    updateObjectiveHud();
+    showEventBanner('▸ NEW OBJECTIVE', 'good');
+}
+
+function noteObjectiveKill(e) {
+    if (!currentObjective) return;
+    const o = currentObjective;
+    if (o.kind === 'kills') o.progress++;
+    if (o.kind === 'swarm' && e.type === 'swarm') o.progress++;
+    if (o.kind === 'elite' && (e.elite || e.type === 'tank' || e.type === 'shield' || e.type === 'dasher')) o.progress++;
+    updateObjectiveHud();
+    if (o.progress >= o.target) completeObjective();
+}
+function noteObjectiveScrap(n) {
+    if (!currentObjective || currentObjective.kind !== 'scrap') return;
+    currentObjective.progress += n;
+    updateObjectiveHud();
+    if (currentObjective.progress >= currentObjective.target) completeObjective();
+}
+function tickObjectives(dt) {
+    if (!currentObjective) {
+        objectiveCooldown -= dt;
+        if (objectiveCooldown <= 0) startObjective();
+        return;
+    }
+    if (currentObjective.kind === 'time') {
+        currentObjective.progress = timeSurvived - currentObjective._t0;
+        updateObjectiveHud();
+        if (currentObjective.progress >= currentObjective.target) completeObjective();
+    }
+}
+function completeObjective() {
+    if (!currentObjective) return;
+    const reward = currentObjective.reward;
+    runStats.objectivesCleared++;
+    showEventBanner('★ OBJECTIVE COMPLETE', 'good');
+    createExplosion(player.x, player.y - 50, '#ff8', 28);
+    if (reward === 'chest') {
+        addScrap(15);
+        // Bonus upgrade choice
+        setTimeout(() => {
+            if (gameState === 'playing') showLevelUp();
+        }, 200);
+    } else {
+        addScrap(25 + Math.floor(Math.random()*15));
+        gainXP(35);
+    }
+    currentObjective = null;
+    objectiveCooldown = 18 + Math.random() * 12;
+    updateObjectiveHud();
+    checkAchievements();
+}
+
+// ---- Scrap shop ----
+function openScrapShop() {
+    if (gameState !== 'paused') return;
+    sfxClick();
+    document.getElementById('pauseScreen').style.display = 'none';
+    updateScrapHud();
+    document.getElementById('scrapShopScreen').style.display = 'flex';
+}
+function closeScrapShop() {
+    sfxClick();
+    document.getElementById('scrapShopScreen').style.display = 'none';
+    document.getElementById('pauseScreen').style.display = 'flex';
+}
+function buyScrapItem(id) {
+    const costs = { heal: 25, dmg: 40, xp: 30, shield: 50, rate: 35 };
+    const cost = costs[id];
+    if (scrap < cost) { sfxClick(); return; }
+    scrap -= cost;
+    updateScrapHud();
+    sfxBuy();
+    if (id === 'heal') player.health = Math.min(player.maxHealth, player.health + 35);
+    else if (id === 'dmg') weapon.damage += 1;
+    else if (id === 'xp') {
+        document.getElementById('scrapShopScreen').style.display = 'none';
+        document.getElementById('pauseScreen').style.display = 'none';
+        gameState = 'playing';
+        gainXP(50);
+        updateStatsUI();
+        updateHealthBar();
+        updateUpgradeUI();
+        return;
+    }
+    else if (id === 'shield') invulnTimer = Math.max(invulnTimer, 6);
+    else if (id === 'rate') weapon.fireRate = Math.max(40, weapon.fireRate - 18);
+    updateStatsUI();
+    updateHealthBar();
+    updateUpgradeUI();
+}
+
+function showHowTo() {
+    sfxClick();
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('howToScreen').style.display = 'flex';
+}
+function hideHowTo() {
+    sfxClick();
+    document.getElementById('howToScreen').style.display = 'none';
+    document.getElementById('menu').style.display = 'flex';
 }
 
 function showEventBanner(text, kind = '') {
@@ -1044,31 +1418,37 @@ function clearEventBanner() {
 }
 
 function triggerRandomEvent() {
-    const types = ['swarm_rush', 'asteroid_field', 'supply_drop', 'elite_wave', 'calm_before'];
+    const types = ['asteroid_storm', 'pirate_raid', 'supply_drop', 'swarm_rush', 'elite_wave'];
     const type = types[Math.floor(Math.random() * types.length)];
     if (type === 'swarm_rush') {
         activeEvent = { type, timer: 12, label: 'SWARM RUSH' };
         showEventBanner('⚠ SWARM RUSH', 'warn');
         for (let i = 0; i < 14; i++) spawnEnemy('swarm');
-    } else if (type === 'asteroid_field') {
-        activeEvent = { type, timer: 18, label: 'ASTEROID FIELD' };
-        showEventBanner('⚠ DENSE ASTEROID FIELD', 'warn');
-        for (let i = 0; i < 8; i++) spawnAsteroid();
+    } else if (type === 'asteroid_storm') {
+        activeEvent = { type, timer: 18, label: 'ASTEROID STORM' };
+        showEventBanner('⚠ ASTEROID STORM', 'warn');
+        for (let i = 0; i < 10; i++) spawnAsteroid();
     } else if (type === 'supply_drop') {
         activeEvent = { type, timer: 8, label: 'SUPPLY DROP' };
-        showEventBanner('★ SUPPLY DROP — +HP & XP', 'good');
+        showEventBanner('★ SUPPLY DROP — scrap & repair', 'good');
         player.health = Math.min(player.maxHealth, player.health + 30);
-        gainXP(40);
+        dropScrap(player.x + 40, player.y - 30, 20, true);
+        dropScrap(player.x - 40, player.y - 20, 12, false);
+        gainXP(30);
         createExplosion(player.x, player.y - 40, '#0f8', 24);
         updateHealthBar();
+    } else if (type === 'pirate_raid') {
+        activeEvent = { type, timer: 16, label: 'PIRATE RAID' };
+        showEventBanner('⚠ PIRATE RAID', 'warn');
+        for (let i = 0; i < 4; i++) spawnEnemy('dasher');
+        for (let i = 0; i < 2; i++) spawnEnemy('shield');
+        spawnEnemy('splitter');
     } else if (type === 'elite_wave') {
         activeEvent = { type, timer: 14, label: 'ELITE WAVE' };
         showEventBanner('⚠ ELITE WAVE', 'warn');
-        for (let i = 0; i < 3; i++) spawnEnemy('tank');
-        for (let i = 0; i < 2; i++) spawnEnemy('sniper');
-    } else {
-        activeEvent = { type, timer: 10, label: 'CALM' };
-        showEventBanner('… BRIEF CALM', 'good');
+        for (let i = 0; i < 2; i++) spawnEnemy('tank');
+        for (let i = 0; i < 2; i++) spawnEnemy('shield');
+        spawnEnemy('sniper');
     }
     nextEventAt = timeSurvived + 40 + Math.random() * 25;
 }
@@ -1081,14 +1461,15 @@ function tickEvents(dt) {
     if (activeEvent) {
         activeEvent.timer -= dt;
         if (activeEvent.type === 'swarm_rush' && Math.random() < 0.08) spawnEnemy('swarm');
-        if (activeEvent.type === 'asteroid_field' && Math.random() < 0.06) spawnAsteroid();
-        if (activeEvent.type === 'elite_wave' && Math.random() < 0.03) spawnEnemy(Math.random() < 0.5 ? 'tank' : 'sniper');
-        // Calm reduces spawns via flag checked in spawn loop
+        if (activeEvent.type === 'asteroid_storm' && Math.random() < 0.08) spawnAsteroid();
+        if (activeEvent.type === 'pirate_raid' && Math.random() < 0.04) spawnEnemy(Math.random() < 0.5 ? 'dasher' : 'swarm');
+        if (activeEvent.type === 'elite_wave' && Math.random() < 0.03) spawnEnemy(Math.random() < 0.5 ? 'tank' : 'shield');
         if (activeEvent.timer <= 0) activeEvent = null;
     }
     if (!boss && timeSurvived >= nextEventAt) {
         triggerRandomEvent();
     }
+    tickObjectives(dt);
 }
 
 function spawnEnemy(type = 'normal') {
@@ -1108,12 +1489,22 @@ function spawnEnemy(type = 'normal') {
         enemies.push({ x, y, size: 14, speed: (2.2 + waveBonus*0.45 + timeBonus*0.35)*hm, health: hp, maxHealth: hp, color: '#6f6', type: 'fast', flash: 0, xpValue: 8, shootTimer: 0 });
     } else if (type === 'tank') {
         const hp = Math.floor((8 + wave * 2.4 + timeBonus * 3.5) * (runMode === 'hard' ? 1.25 : 1));
-        enemies.push({ x, y, size: 30, speed: (0.75 + waveBonus*0.18 + timeBonus*0.1)*hm, health: hp, maxHealth: hp, color: '#a4f', type: 'tank', flash: 0, xpValue: 25, shootTimer: 40 + Math.random()*40 });
+        enemies.push({ x, y, size: 30, speed: (0.75 + waveBonus*0.18 + timeBonus*0.1)*hm, health: hp, maxHealth: hp, color: '#a4f', type: 'tank', flash: 0, xpValue: 25, shootTimer: 40 + Math.random()*40, elite: true });
     } else if (type === 'swarm') {
         enemies.push({ x, y, size: 9, speed: (2.8 + waveBonus*0.3 + timeBonus*0.25)*hm, health: 1, maxHealth: 1, color: '#fa0', type: 'swarm', flash: 0, xpValue: 4, shootTimer: 0 });
     } else if (type === 'sniper') {
         const hp = 2 + Math.floor(wave * 0.6 + timeBonus);
         enemies.push({ x, y, size: 16, speed: (1.0 + waveBonus*0.15)*hm, health: hp, maxHealth: hp, color: '#0cf', type: 'sniper', flash: 0, xpValue: 18, shootTimer: 60 + Math.random()*40, preferredRange: 420 });
+    } else if (type === 'dasher') {
+        const hp = 3 + Math.floor(wave * 1.1 + timeBonus * 1.2);
+        enemies.push({ x, y, size: 15, speed: (1.6 + waveBonus*0.3)*hm, health: hp, maxHealth: hp, color: '#f0a', type: 'dasher', flash: 0, xpValue: 16, shootTimer: 0, dashTimer: 40 + Math.random()*40, dashVx: 0, dashVy: 0, dashing: false, elite: true });
+    } else if (type === 'shield') {
+        const hp = Math.floor((5 + wave * 1.6 + timeBonus * 2) * (runMode === 'hard' ? 1.2 : 1));
+        const sh = Math.floor(4 + wave * 0.8);
+        enemies.push({ x, y, size: 22, speed: (1.05 + waveBonus*0.2)*hm, health: hp, maxHealth: hp, color: '#4af', type: 'shield', flash: 0, xpValue: 22, shootTimer: 50, shield: sh, maxShield: sh, elite: true });
+    } else if (type === 'splitter') {
+        const hp = 4 + Math.floor(wave * 1.2 + timeBonus);
+        enemies.push({ x, y, size: 24, speed: (1.15 + waveBonus*0.25)*hm, health: hp, maxHealth: hp, color: '#f64', type: 'splitter', flash: 0, xpValue: 20, shootTimer: 0 });
     } else {
         const hp = 3 + Math.floor(wave * 1.4 + timeBonus * 1.8);
         enemies.push({ x, y, size: 20, speed: (1.35 + waveBonus*0.4 + timeBonus*0.25)*hm, health: hp, maxHealth: hp, color: '#f33', type: 'normal', flash: 0, xpValue: 12, shootTimer: 0 });
@@ -1279,16 +1670,22 @@ function returnToMenu() {
     document.getElementById('levelUpScreen').style.display = 'none';
     document.getElementById('specialUpScreen').style.display = 'none';
     document.getElementById('menu').style.display = 'flex';
+    const oh = document.getElementById('objectiveHud');
+    if (oh) oh.style.display = 'none';
     gameState = 'title';
     updateMetaDisplay();
 }
 
 function resetGame() {
-    player = { x: W/2, y: H/2, size: 18, speed: 5.8, health: 100, maxHealth: 100, score: 0, angle: 0, vx: 0, vy: 0 };
+    player = { x: W/2, y: H/2, size: 18, speed: 5.8, health: 100, maxHealth: 100, score: 0, angle: 0, vx: 0, vy: 0, scrapBonus: 0 };
     weapon = { level: 1, fireRate: 140, damage: 1, shots: 1, spread: 0 };
     playerLevel = 1; xp = 0; xpToNext = 50;
     xpMultiplier = 1; regenRate = 0; invulnTimer = 0;
-    runStats = { kills: 0, bossesKilled: 0, starsCollected: 0 };
+    pierceShots = 0; lifesteal = 0; critChance = 0; orbitDrones = 0; scrapMagnet = 0;
+    ownedUpgradeIds = [];
+    scrap = 0; scrapDrops = []; lastScrapSpawner = 0;
+    currentObjective = null; objectiveCooldown = 10;
+    runStats = { kills: 0, bossesKilled: 0, starsCollected: 0, scrapCollected: 0, objectivesCleared: 0, elitesKilled: 0 };
     applyMetaToRun();
     bullets = []; enemies = []; bossBullets = []; enemyBullets = []; particles = []; asteroids = []; stars_drop = [];
     boss = null; timeSurvived = 0; wave = 1;
@@ -1304,11 +1701,17 @@ function resetGame() {
     updateXPBar();
     updateStatsUI();
     updateHealthBar();
+    updateScrapHud();
+    updateObjectiveHud();
+    const oh = document.getElementById('objectiveHud');
+    if (oh) oh.style.display = 'block';
 }
 
 window.addEventListener('keydown', e => {
     keys[e.key.toLowerCase()] = true;
     if (e.key === 'Escape') {
+        const shop = document.getElementById('scrapShopScreen');
+        if (shop && shop.style.display === 'flex') { closeScrapShop(); return; }
         if (gameState === 'playing') pauseGame();
         else if (gameState === 'paused') resumeGame();
     }
@@ -1479,8 +1882,15 @@ function loop() {
                             if (proj > 15 && proj < maxRange) {
                                 const cx = player.x + bcos*proj, cy = player.y + bsin*proj;
                                 if (Math.hypot(e.x-cx, e.y-cy) < e.size+10) {
-                                    e.health -= 0.4 * weapon.damage;
-                                    e.flash = 8;
+                                    let ld = 0.4 * weapon.damage * (Math.random() < critChance ? 2 : 1);
+                                    if (e.type === 'shield' && e.shield > 0) {
+                                        e.shield -= ld;
+                                        e.flash = 8;
+                                        if (e.shield < 0) { e.health += e.shield; e.shield = 0; }
+                                    } else {
+                                        e.health -= ld;
+                                        e.flash = 8;
+                                    }
                                     if (e.health <= 0) {
                                         registerKill(e);
                                         enemies.splice(i, 1);
@@ -1509,7 +1919,8 @@ function loop() {
                 totalShots = Math.min(totalShots, 28);
                 for (let i = 0; i < totalShots; i++) {
                     const a = player.angle + (i - (totalShots-1)/2) * (selectedShip===1 ? 0.16 : Math.max(0.11, weapon.spread*0.55));
-                    bullets.push({ x: fx, y: fy, vx: Math.cos(a)*16.5, vy: Math.sin(a)*16.5, life: 80, damage: weapon.damage });
+                    const isCrit = Math.random() < critChance;
+                    bullets.push({ x: fx, y: fy, vx: Math.cos(a)*16.5, vy: Math.sin(a)*16.5, life: 80, damage: weapon.damage, pierceLeft: pierceShots, crit: isCrit });
                 }
                 lastShot = Date.now();
                 sfxShoot();
@@ -1549,7 +1960,7 @@ function loop() {
                 if (Math.hypot(b.x-a.x, b.y-a.y) < a.size+4) { hitAst = true; createExplosion(b.x, b.y, '#888', 6); break; }
             }
             if (hitAst || b.life <= 0 || b.x < -30 || b.x > W+30 || b.y < -30 || b.y > H+30) { bullets.splice(i, 1); continue; }
-            ctx.fillStyle = '#0ff';
+            ctx.fillStyle = b.crit ? '#ff8' : '#0ff';
             ctx.fillRect(b.x-3, b.y-3, 6, 6);
         }
     } else {
@@ -1613,6 +2024,26 @@ function loop() {
                 if (dist < e.preferredRange - 40) { e.x -= (dx/dist)*e.speed; e.y -= (dy/dist)*e.speed; }
                 else if (dist > e.preferredRange + 60) { e.x += (dx/dist)*e.speed * 0.7; e.y += (dy/dist)*e.speed * 0.7; }
                 else { e.x += (-dy/dist)*e.speed * 0.5; e.y += (dx/dist)*e.speed * 0.5; }
+            } else if (e.type === 'dasher') {
+                e.dashTimer--;
+                if (e.dashing) {
+                    e.x += e.dashVx; e.y += e.dashVy;
+                    e.dashVx *= 0.96; e.dashVy *= 0.96;
+                    if (Math.hypot(e.dashVx, e.dashVy) < 1.2) e.dashing = false;
+                } else if (e.dashTimer <= 0) {
+                    e.dashing = true;
+                    e.dashTimer = 70 + Math.random() * 40;
+                    const ang = Math.atan2(dy, dx);
+                    e.dashVx = Math.cos(ang) * (e.speed * 5.5);
+                    e.dashVy = Math.sin(ang) * (e.speed * 5.5);
+                } else {
+                    e.x += (dx/dist)*e.speed * 0.55;
+                    e.y += (dy/dist)*e.speed * 0.55;
+                }
+            } else if (e.type === 'shield') {
+                e.x += (dx/dist)*e.speed * 0.85;
+                e.y += (dy/dist)*e.speed * 0.85;
+                if (e.shield < e.maxShield && Math.random() < 0.01) e.shield = Math.min(e.maxShield, e.shield + 1);
             } else {
                 e.x += (dx/dist)*e.speed;
                 e.y += (dy/dist)*e.speed;
@@ -1640,10 +2071,19 @@ function loop() {
                     enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*9, vy: Math.sin(angle)*9, life: 90, damage: 8 + Math.floor(wave * 0.5) });
                 }
             }
+            if (e.type === 'shield') {
+                e.shootTimer--;
+                if (e.shootTimer <= 0 && dist < 380) {
+                    e.shootTimer = 70 + Math.random() * 30;
+                    const angle = Math.atan2(player.y - e.y, player.x - e.x);
+                    enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(angle)*6, vy: Math.sin(angle)*6, life: 55, damage: 6 + Math.floor(wave * 0.35) });
+                }
+            }
 
             if (dist < player.size + e.size) {
                 if (invulnTimer <= 0) {
-                    player.health -= e.type === 'tank' ? 2.8 : e.type === 'swarm' ? 0.8 : 1.5;
+                    const contact = e.type === 'tank' || e.type === 'shield' ? 2.8 : e.type === 'dasher' ? 2.2 : e.type === 'swarm' ? 0.8 : 1.5;
+                    player.health -= contact;
                     sfxPlayerHurt();
                 }
                 createExplosion(e.x, e.y, '#f66', 12);
@@ -1656,11 +2096,23 @@ function loop() {
             for (let j = bullets.length-1; j >= 0; j--) {
                 const b = bullets[j];
                 if (Math.hypot(b.x-e.x, b.y-e.y) < e.size+5) {
-                    e.health -= b.damage;
+                    let dmg = b.damage;
+                    if (b.crit) dmg *= 2;
+                    if (e.type === 'shield' && e.shield > 0) {
+                        e.shield -= dmg;
+                        e.flash = 8;
+                        if (e.shield <= 0) { e.shield = 0; createExplosion(e.x, e.y, '#4af', 16); }
+                        if (!b.pierceLeft) bullets.splice(j, 1);
+                        else { b.pierceLeft--; }
+                        sfxHit();
+                        continue;
+                    }
+                    e.health -= dmg;
                     e.flash = 8;
-                    bullets.splice(j, 1);
+                    if (!b.pierceLeft) bullets.splice(j, 1);
+                    else b.pierceLeft--;
                     sfxHit();
-                    createExplosion(b.x, b.y, '#ff0', 8);
+                    createExplosion(b.x, b.y, b.crit ? '#ff8' : '#ff0', 8);
                     if (e.health <= 0) {
                         registerKill(e);
                         enemies.splice(i, 1);
@@ -1683,13 +2135,29 @@ function loop() {
         if (e.type === 'tank') ctx.fillRect(-15,-15,30,30);
         else if (e.type === 'fast') ctx.fillRect(-7,-11,20,16);
         else if (e.type === 'swarm') ctx.fillRect(-5,-5,10,10);
-        else if (e.type === 'sniper') {
+        else if (e.type === 'dasher') {
+            ctx.beginPath();
+            ctx.moveTo(16, 0); ctx.lineTo(-12, -10); ctx.lineTo(-4, 0); ctx.lineTo(-12, 10);
+            ctx.closePath(); ctx.fill();
+            if (e.dashing) { ctx.strokeStyle = '#f0a'; ctx.lineWidth = 2; ctx.stroke(); }
+        } else if (e.type === 'shield') {
+            ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI*2); ctx.fill();
+            if (e.shield > 0) {
+                ctx.strokeStyle = '#8ef'; ctx.lineWidth = 3; ctx.globalAlpha = 0.7 + 0.3*(e.shield/e.maxShield);
+                ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI*2); ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        } else if (e.type === 'splitter') {
+            ctx.fillRect(-12, -12, 24, 24);
+            ctx.fillStyle = e.flash > 0 ? '#fff' : '#faa';
+            ctx.fillRect(-5, -5, 10, 10);
+        } else if (e.type === 'sniper') {
             ctx.beginPath();
             ctx.moveTo(14, 0); ctx.lineTo(-10, -8); ctx.lineTo(-6, 0); ctx.lineTo(-10, 8);
             ctx.closePath(); ctx.fill();
         }
         else ctx.fillRect(-10,-10,20,20);
-        if (e.flash <= 0 && e.type !== 'swarm') {
+        if (e.flash <= 0 && e.type !== 'swarm' && e.type !== 'shield') {
             ctx.fillStyle = '#000';
             ctx.fillRect(-5,-6,4,4); ctx.fillRect(2,-6,4,4);
         }
@@ -1786,6 +2254,16 @@ function loop() {
                         const a = angle + (i - 2) * 0.2;
                         bossBullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*boss.bulletSpeed*1.1, vy: Math.sin(a)*boss.bulletSpeed*1.1, life: 100, damage: boss.bulletDmg });
                     }
+                } else if (pat === 'nova') {
+                    const rings = boss.phase === 2 ? 16 : 12;
+                    for (let i = 0; i < rings; i++) {
+                        const a = (i / rings) * Math.PI * 2 + boss.shootTimer * 0.05;
+                        bossBullets.push({ x: boss.x, y: boss.y, vx: Math.cos(a)*boss.bulletSpeed*0.85, vy: Math.sin(a)*boss.bulletSpeed*0.85, life: 140, damage: boss.bulletDmg });
+                    }
+                    if (boss.phase === 2 && Math.random() < 0.4) {
+                        for (let i = -1; i <= 1; i++)
+                            bossBullets.push({ x: boss.x, y: boss.y, vx: Math.cos(angle+i*0.3)*boss.bulletSpeed*1.2, vy: Math.sin(angle+i*0.3)*boss.bulletSpeed*1.2, life: 110, damage: boss.bulletDmg });
+                    }
                 }
             }
 
@@ -1808,6 +2286,9 @@ function loop() {
                 gainXP(90 + bossesSpawned * 15);
                 createExplosion(boss.x, boss.y, boss.color, 100);
                 dropBossStar(boss.x, boss.y);
+                dropScrap(boss.x, boss.y, 25, true);
+                dropScrap(boss.x + 30, boss.y - 20, 12, false);
+                dropScrap(boss.x - 30, boss.y + 10, 12, false);
                 boss = null;
                 document.getElementById('bossBar').style.display = 'none';
                 screenShake = 18;
@@ -1893,6 +2374,37 @@ function loop() {
         ctx.globalAlpha = 1;
     }
 
+    // Scrap drops + orbital drones
+    if (!paused && player.health > 0) {
+        tickScrapDrops(1/60);
+        if (Date.now() - lastScrapSpawner > 9000 - Math.min(4000, wave * 120)) {
+            if (scrapDrops.length < 18) spawnMapScrap();
+            lastScrapSpawner = Date.now();
+        }
+        if (orbitDrones > 0) {
+            for (let d = 0; d < orbitDrones; d++) {
+                const ang = Date.now()/400 + d * (Math.PI * 2 / Math.max(1, orbitDrones));
+                const dx = player.x + Math.cos(ang) * 52;
+                const dy = player.y + Math.sin(ang) * 52;
+                ctx.save();
+                ctx.fillStyle = '#0ff';
+                ctx.shadowBlur = 10; ctx.shadowColor = '#0ff';
+                ctx.beginPath(); ctx.arc(dx, dy, 6, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+                for (let ei = enemies.length - 1; ei >= 0; ei--) {
+                    const e = enemies[ei];
+                    if (Math.hypot(e.x - dx, e.y - dy) < e.size + 8) {
+                        let dd = 0.15 * weapon.damage;
+                        if (e.type === 'shield' && e.shield > 0) { e.shield -= dd; e.flash = 4; }
+                        else { e.health -= dd; e.flash = 4; }
+                        if (e.health <= 0) { registerKill(e); enemies.splice(ei, 1); }
+                    }
+                }
+            }
+        }
+    }
+    drawScrapDrops();
+
     if (player.health > 0) drawPlayer();
     ctx.restore();
 
@@ -1923,17 +2435,22 @@ function loop() {
     }
     document.getElementById('bossTimer').textContent = Math.max(0, Math.ceil(bossSpawnTimer));
 
-    const calm = activeEvent && activeEvent.type === 'calm_before';
+    const calm = activeEvent && (activeEvent.type === 'calm_before' || activeEvent.type === 'supply_drop');
     const spawnInterval = Math.max(140, (850 - wave*32 - Math.min(timeSurvived, SPEED_CAP_TIME)*1.4) / hardMult) * (calm ? 2.2 : 1);
     if (Date.now() - lastSpawn > spawnInterval) {
         const count = calm ? 1 : Math.min(2 + Math.floor(wave/3) + Math.floor(Math.min(timeSurvived, SPEED_CAP_TIME)/35), 10);
         for (let i = 0; i < count; i++) {
             if (enemies.length < 55) {
                 const r = Math.random();
-                if (r < 0.10) spawnEnemy('tank');
-                else if (r < 0.22) spawnEnemy('sniper');
-                else if (r < 0.40) spawnEnemy('swarm');
-                else if (r < 0.58) spawnEnemy('fast');
+                const late = timeSurvived > 70;
+                const mid = timeSurvived > 35;
+                if (late && r < 0.08) spawnEnemy('shield');
+                else if (late && r < 0.16) spawnEnemy('dasher');
+                else if (mid && r < 0.24) spawnEnemy('splitter');
+                else if (r < 0.32) spawnEnemy('tank');
+                else if (r < 0.42) spawnEnemy('sniper');
+                else if (r < 0.55) spawnEnemy('swarm');
+                else if (r < 0.70) spawnEnemy('fast');
                 else spawnEnemy('normal');
             }
         }
@@ -1966,6 +2483,10 @@ function loop() {
         document.getElementById('finalScoreDisplay').textContent = player.score;
         document.getElementById('finalLevelDisplay').textContent = playerLevel;
         document.getElementById('creditsEarned').textContent = earned;
+        const fs = document.getElementById('finalScrap'); if (fs) fs.textContent = runStats.scrapCollected;
+        const fo = document.getElementById('finalObjectives'); if (fo) fo.textContent = runStats.objectivesCleared;
+        const fe = document.getElementById('finalElites'); if (fe) fe.textContent = runStats.elitesKilled;
+        const fk = document.getElementById('finalKills'); if (fk) fk.textContent = runStats.kills;
         document.getElementById('deathScreen').style.display = 'flex';
     }
 }
@@ -1974,6 +2495,7 @@ function loop() {
 setVolume(soundVolume);
 updateMuteUI();
 document.getElementById('menu').style.display = 'flex';
+const _oh = document.getElementById('objectiveHud'); if (_oh) _oh.style.display = 'none';
 syncVersionBadge();
 checkForUpdate();
 updateXPBar();
