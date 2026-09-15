@@ -206,10 +206,23 @@
         background: #000;
     }
     #splash {
-        position: fixed; inset: 0; z-index: 200;
+        position: fixed; inset: 0; z-index: 300;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        background: transparent; cursor: pointer;
+        background: rgba(0, 0, 10, 0.35); cursor: pointer;
     }
+    body.splash-active #menu,
+    body.splash-active #highScore,
+    body.splash-active #creditsDisplay,
+    body.splash-active #metaBonuses,
+    body.splash-active #version-badge,
+    body.splash-active #update-banner,
+    body.splash-active #game {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    body.splash-active #menuBg { z-index: 1; }
+
     #splash .splash-title {
         font-size: clamp(42px, 8vw, 72px); color: #0ff; letter-spacing: 8px;
         text-shadow: 0 0 24px #0ff, 0 0 60px #06f; margin-bottom: 8px;
@@ -484,7 +497,7 @@
 </div>
 
 
-<div id="version-badge">v0.2.3</div>
+<div id="version-badge">v0.2.4</div>
 <div id="update-banner">
   <p id="update-banner-text">Update available</p>
   <button onclick="reloadForUpdate()">RELOAD</button>
@@ -497,7 +510,7 @@ const ctx = canvas.getContext('2d');
 const W = 2400, H = 1600;
 
 // ==================== VERSION / UPDATE CHECK ====================
-const GAME_VERSION = '0.2.3';
+const GAME_VERSION = '0.2.4';
 // Host version.json next to the game when online. Leave empty for local file play.
 const UPDATE_CHECK_URL = 'https://arthur1134.github.io/StarSmashers/version.json';
 let updateCheckDone = false;
@@ -2789,12 +2802,28 @@ function markSpaceMenus() {
 function dismissSplash() {
     if (splashDone) return;
     splashDone = true;
+    document.body.classList.remove('splash-active');
     const sp = document.getElementById('splash');
-    if (sp) sp.style.display = 'none';
-    document.getElementById('menu').style.display = 'flex';
+    if (sp) {
+        sp.style.display = 'none';
+        sp.style.pointerEvents = 'none';
+    }
+    // Reveal menu only after splash is gone
+    const menu = document.getElementById('menu');
+    if (menu) menu.style.display = 'flex';
+    const hs = document.getElementById('highScore');
+    if (hs) { hs.style.display = ''; hs.style.visibility = ''; }
+    const cd = document.getElementById('creditsDisplay');
+    if (cd) { cd.style.display = ''; cd.style.visibility = ''; }
+    const mb = document.getElementById('metaBonuses');
+    if (mb) { mb.style.display = ''; mb.style.visibility = ''; }
+    const vb = document.getElementById('version-badge');
+    if (vb) { vb.style.display = ''; vb.style.visibility = ''; }
+    const game = document.getElementById('game');
+    if (game) { game.style.display = ''; game.style.visibility = ''; }
     syncVersionBadge();
     checkForUpdate();
-    updateControlUI();
+    if (typeof updateControlUI === 'function') updateControlUI();
 }
 function setupSplash() {
     markSpaceMenus();
@@ -2802,17 +2831,20 @@ function setupSplash() {
     window.addEventListener('resize', resizeMenuBg);
     const sp = document.getElementById('splash');
     if (!sp) { splashDone = true; return; }
-    // Hide main menu until splash dismissed
-    document.getElementById('menu').style.display = 'none';
-    const go = () => dismissSplash();
+    document.body.classList.add('splash-active');
+    // Hard-hide menu and chrome until splash is done
+    const menu = document.getElementById('menu');
+    if (menu) menu.style.display = 'none';
+    sp.style.display = 'flex';
+    const go = (e) => { if (e) e.preventDefault(); dismissSplash(); };
     sp.addEventListener('click', go);
     window.addEventListener('keydown', function splashKey(e) {
         if (splashDone) return;
         if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
             e.preventDefault();
-            go();
+            dismissSplash();
         }
-    });
+    }, true);
     setTimeout(() => { if (!splashDone) dismissSplash(); }, 4500);
 }
 
