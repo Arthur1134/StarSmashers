@@ -1974,6 +1974,8 @@ function loop() {
 setVolume(soundVolume);
 updateMuteUI();
 document.getElementById('menu').style.display = 'flex';
+syncVersionBadge();
+checkForUpdate();
 updateXPBar();
 updateStatsUI();
 updateHealthBar();
