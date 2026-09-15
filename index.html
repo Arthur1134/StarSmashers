@@ -531,7 +531,7 @@
 </div>
 
 
-<div id="version-badge">v0.2.6</div>
+<div id="version-badge">v0.2.7</div>
 <div id="update-banner">
   <p id="update-banner-text">Update available</p>
   <button onclick="reloadForUpdate()">RELOAD</button>
@@ -544,7 +544,7 @@ const ctx = canvas.getContext('2d');
 const W = 2400, H = 1600;
 
 // ==================== VERSION / UPDATE CHECK ====================
-const GAME_VERSION = '0.2.6';
+const GAME_VERSION = '0.2.7';
 // Host version.json next to the game when online. Leave empty for local file play.
 const UPDATE_CHECK_URL = 'https://arthur1134.github.io/StarSmashers/version.json';
 let updateCheckDone = false;
@@ -1532,26 +1532,32 @@ function tickObjectives(dt) {
         if (currentObjective.progress >= currentObjective.target) completeObjective();
     }
 }
+let objectiveCompleting = false;
 function completeObjective() {
-    if (!currentObjective) return;
+    if (!currentObjective || objectiveCompleting) return;
+    objectiveCompleting = true;
     const reward = currentObjective.reward;
-    runStats.objectivesCleared++;
-    showEventBanner('★ OBJECTIVE COMPLETE', 'good');
-    createExplosion(player.x, player.y - 50, '#ff8', 28);
-    if (reward === 'chest') {
-        addScrap(15);
-        // Bonus upgrade choice
-        setTimeout(() => {
-            if (gameState === 'playing') showLevelUp();
-        }, 200);
-    } else {
-        addScrap(25 + Math.floor(Math.random()*15));
-        gainXP(35);
-    }
+    // Clear first so reward scrap/XP cannot re-enter completion
     currentObjective = null;
     objectiveCooldown = 18 + Math.random() * 12;
+    runStats.objectivesCleared++;
+    showEventBanner('OBJECTIVE COMPLETE', 'good');
+    createExplosion(player.x, player.y - 50, '#ff8', 28);
     updateObjectiveHud();
-    checkAchievements();
+    try {
+        if (reward === 'chest') {
+            addScrap(15);
+            setTimeout(() => {
+                if (gameState === 'playing') showLevelUp();
+            }, 200);
+        } else {
+            addScrap(25 + Math.floor(Math.random() * 15));
+            gainXP(35);
+        }
+        checkAchievements();
+    } finally {
+        objectiveCompleting = false;
+    }
 }
 
 // ---- Scrap shop ----
@@ -1864,7 +1870,7 @@ function resetGame() {
     pierceShots = 0; lifesteal = 0; critChance = 0; orbitDrones = 0; scrapMagnet = 0;
     ownedUpgradeIds = [];
     scrap = 0; scrapDrops = []; lastScrapSpawner = 0;
-    currentObjective = null; objectiveCooldown = 10;
+    currentObjective = null; objectiveCooldown = 10; objectiveCompleting = false;
     runStats = { kills: 0, bossesKilled: 0, starsCollected: 0, scrapCollected: 0, objectivesCleared: 0, elitesKilled: 0 };
     applyMetaToRun();
     bullets = []; enemies = []; bossBullets = []; enemyBullets = []; particles = []; asteroids = []; stars_drop = [];
@@ -1922,7 +1928,7 @@ function loop() {
     drawMenuSpace(Date.now());
     requestAnimationFrame(loop);
     if (gameState === 'title') {
-        document.getElementById('menu').style.display = 'flex';
+        // Do not force #menu every frame — sub-screens (New Game, Settings, etc.) own visibility
         return;
     }
     if (gameState === 'paused') return;
@@ -2786,8 +2792,12 @@ function enterPlayingUI() {
     if (game) { game.style.display = ''; game.style.visibility = ''; }
 }
 
+let _menuSpaceOn = null;
 function setMenuSpaceActive(on) {
-    document.body.classList.toggle('menu-space', !!on);
+    on = !!on;
+    if (_menuSpaceOn === on) return;
+    _menuSpaceOn = on;
+    document.body.classList.toggle('menu-space', on);
     const game = document.getElementById('game');
     if (game) {
         if (on) {
@@ -2802,8 +2812,12 @@ function setMenuSpaceActive(on) {
     }
 }
 function refreshMenuSpaceState() {
-    const on = menuOverlayVisible();
-    setMenuSpaceActive(on);
+    // Skip expensive overlay checks during active play
+    if (gameState === 'playing' || gameState === 'levelup' || gameState === 'special' || gameState === 'paused' || gameState === 'dead') {
+        setMenuSpaceActive(false);
+        return;
+    }
+    setMenuSpaceActive(menuOverlayVisible());
 }
 
 function menuOverlayVisible() {
