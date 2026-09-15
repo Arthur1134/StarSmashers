@@ -386,8 +386,8 @@
             <div class="mode-desc">Survive as long as you can.<br>Bosses every 2 minutes.</div>
         </div>
         <div class="mode-card" id="modeTimed" onclick="selectMode('timed')">
-            <div class="mode-name">5-MIN RUSH</div>
-            <div class="mode-desc">Score as high as possible<br>in 5 minutes. Extra credits!</div>
+            <div class="mode-name">8-MIN RUSH</div>
+            <div class="mode-desc">Score as high as possible<br>in 8 minutes. Extra credits!</div>
         </div>
         <div class="mode-card" id="modeHard" onclick="selectMode('hard')">
             <div class="mode-name">HARDCORE</div>
@@ -531,7 +531,7 @@
 </div>
 
 
-<div id="version-badge">v0.2.7</div>
+<div id="version-badge">v0.2.8</div>
 <div id="update-banner">
   <p id="update-banner-text">Update available</p>
   <button onclick="reloadForUpdate()">RELOAD</button>
@@ -544,7 +544,7 @@ const ctx = canvas.getContext('2d');
 const W = 2400, H = 1600;
 
 // ==================== VERSION / UPDATE CHECK ====================
-const GAME_VERSION = '0.2.7';
+const GAME_VERSION = '0.2.8';
 // Host version.json next to the game when online. Leave empty for local file play.
 const UPDATE_CHECK_URL = 'https://arthur1134.github.io/StarSmashers/version.json';
 let updateCheckDone = false;
@@ -653,10 +653,16 @@ function toggleMute() {
 
 // ==================== CONTROL SCHEME ====================
 // 'thrust' = rotate + thrust + wrap; 'strafe' = WASD any-direction + mouse aim + bounce
-let controlScheme = localStorage.getItem('starSmashersControls') || 'thrust';
+let controlScheme = localStorage.getItem('starSmashersControls') || 'strafe';
 if (controlScheme === 'asteroids') controlScheme = 'thrust'; // migrate old key
 if (controlScheme === 'twin') controlScheme = 'strafe';
-if (controlScheme !== 'thrust' && controlScheme !== 'strafe') controlScheme = 'thrust';
+if (controlScheme !== 'thrust' && controlScheme !== 'strafe') controlScheme = 'strafe';
+// One-time: new default is WASD + Mouse (strafe)
+if (!localStorage.getItem('starSmashersControlsDefaultV2')) {
+    controlScheme = 'strafe';
+    localStorage.setItem('starSmashersControls', 'strafe');
+    localStorage.setItem('starSmashersControlsDefaultV2', '1');
+}
 
 function setControlScheme(scheme) {
     if (scheme !== 'thrust' && scheme !== 'strafe') return;
@@ -834,7 +840,7 @@ function applyMetaToRun() {
     weapon.damage = 1 + dmgLv + (meta.unlocks.startMod ? 1 : 0);
     player.maxHealth = 100 + hpLv * 20;
     player.health = player.maxHealth;
-    player.speed = 5.8 + spdLv * 0.4;
+    player.speed = 5.1 + spdLv * 0.35;
     weapon.shots = 1 + shotsLv;
     weapon.fireRate = Math.max(50, 140 - rateLv * 10);
     xpMultiplier = 1 + xpLv * 0.15;
@@ -967,7 +973,7 @@ let pendingShip = 0;
 let runMode = 'endless';
 let pendingMode = 'endless';
 const SHIP_NAMES = ['Classic', 'Twin Hull', 'Laser Cutter'];
-const TIMED_LIMIT = 300;
+const TIMED_LIMIT = 480;
 
 function isShipUnlocked(i) {
     if (i === 0) return true;
@@ -1070,24 +1076,24 @@ let highScore = parseInt(localStorage.getItem('starSmashersHS') || '0');
 document.getElementById('highScoreValue').textContent = highScore;
 document.getElementById('creditsValue').textContent = meta.credits;
 
-let player = { x: W/2, y: H/2, size: 18, speed: 5.8, health: 100, maxHealth: 100, score: 0, angle: -Math.PI/2, vx: 0, vy: 0 };
+let player = { x: W/2, y: H/2, size: 18, speed: 5.1, health: 100, maxHealth: 100, score: 0, angle: -Math.PI/2, vx: 0, vy: 0 };
 let weapon = { level: 1, fireRate: 140, damage: 1, shots: 1, spread: 0 };
-let playerLevel = 1, xp = 0, xpToNext = 50;
+let playerLevel = 1, xp = 0, xpToNext = 70;
 let pendingUpgrades = [], pendingSpecials = [];
 let keys = {}, mouse = { x: 0, y: 0, down: false };
 let bullets = [], enemies = [], bossBullets = [], enemyBullets = [], particles = [], asteroids = [], stars_drop = [], scrapDrops = [];
 let scrap = 0, scrapMagnet = 0, lastScrapSpawner = 0;
-let currentObjective = null, objectiveCooldown = 8;
+let currentObjective = null, objectiveCooldown = 14;
 let pierceShots = 0, lifesteal = 0, critChance = 0, orbitDrones = 0;
 let ownedUpgradeIds = [];
 let timeSurvived = 0, wave = 1;
 let lastShot = 0, lastSpawn = 0, lastAsteroidSpawn = 0;
 let boss = null, screenShake = 0, screenFlash = 0, laserActive = false;
 let hitStop = 0; // brief freeze frames on big hits
-let bossSpawnTimer = 120, bossesSpawned = 0;
+let bossSpawnTimer = 160, bossesSpawned = 0;
 const BOSS_COLORS = ['#f33', '#f3f', '#3ff', '#ff3', '#f93', '#3f3', '#93f', '#f66'];
 const BOSS_PATTERNS = ['triple', 'spiral', 'charge', 'orbit', 'minion', 'nova'];
-const SPEED_CAP_TIME = 240;
+const SPEED_CAP_TIME = 360;
 let xpMultiplier = 1, regenRate = 0, invulnTimer = 0;
 let hardMult = 1;
 // Soft camera
@@ -1191,12 +1197,12 @@ function updateHealthBar() {
 }
 
 function gainXP(amount) {
-    const amt = Math.floor(amount * xpMultiplier);
+    const amt = Math.floor(amount * xpMultiplier * 0.72); // slower XP pace
     xp += amt;
     while (xp >= xpToNext) {
         xp -= xpToNext;
         playerLevel++;
-        xpToNext = Math.floor(50 + playerLevel * 35 + playerLevel * playerLevel * 4);
+        xpToNext = Math.floor(70 + playerLevel * 48 + playerLevel * playerLevel * 6);
         document.getElementById('playerLevel').textContent = playerLevel;
         sfxLevelUp();
         showLevelUp();
@@ -1269,7 +1275,7 @@ function pickUpgrade(idx) {
             if (gameState === 'playing' && xp >= xpToNext) {
                 xp -= xpToNext;
                 playerLevel++;
-                xpToNext = Math.floor(50 + playerLevel * 35 + playerLevel * playerLevel * 4);
+                xpToNext = Math.floor(70 + playerLevel * 48 + playerLevel * playerLevel * 6);
                 document.getElementById('playerLevel').textContent = playerLevel;
                 sfxLevelUp();
                 showLevelUp();
@@ -1481,7 +1487,7 @@ function drawScrapDrops() {
 
 // ---- Objectives ----
 const OBJECTIVE_DEFS = [
-    { id: 'survive', make: () => ({ text: 'Survive 45 seconds', target: 45, progress: 0, kind: 'time', reward: 'scrap' }) },
+    { id: 'survive', make: () => ({ text: 'Survive 60 seconds', target: 60, progress: 0, kind: 'time', reward: 'scrap' }) },
     { id: 'scrap', make: () => ({ text: 'Collect 40 scrap', target: 40, progress: 0, kind: 'scrap', reward: 'chest' }) },
     { id: 'elite', make: () => ({ text: 'Destroy 3 elites', target: 3, progress: 0, kind: 'elite', reward: 'scrap' }) },
     { id: 'swarm', make: () => ({ text: 'Clear 20 swarm drones', target: 20, progress: 0, kind: 'swarm', reward: 'chest' }) },
@@ -1539,7 +1545,7 @@ function completeObjective() {
     const reward = currentObjective.reward;
     // Clear first so reward scrap/XP cannot re-enter completion
     currentObjective = null;
-    objectiveCooldown = 18 + Math.random() * 12;
+    objectiveCooldown = 28 + Math.random() * 16;
     runStats.objectivesCleared++;
     showEventBanner('OBJECTIVE COMPLETE', 'good');
     createExplosion(player.x, player.y - 50, '#ff8', 28);
@@ -1624,7 +1630,7 @@ function triggerRandomEvent() {
     if (type === 'swarm_rush') {
         activeEvent = { type, timer: 12, label: 'SWARM RUSH' };
         showEventBanner('⚠ SWARM RUSH', 'warn');
-        for (let i = 0; i < 14; i++) spawnEnemy('swarm');
+        for (let i = 0; i < 9; i++) spawnEnemy('swarm');
     } else if (type === 'asteroid_storm') {
         activeEvent = { type, timer: 18, label: 'ASTEROID STORM' };
         showEventBanner('⚠ ASTEROID STORM', 'warn');
@@ -1682,33 +1688,33 @@ function spawnEnemy(type = 'normal') {
     else { x = -40; y = Math.random()*H; }
     const t = Math.min(timeSurvived, SPEED_CAP_TIME);
     const timeBonus = t * 0.015;
-    const waveBonus = wave * 0.35;
+    const waveBonus = wave * 0.22;
     const hm = hardMult;
 
     if (type === 'fast') {
         const hp = 1 + Math.floor(wave * 0.45 + timeBonus * 0.6);
-        enemies.push({ x, y, size: 14, speed: (2.2 + waveBonus*0.45 + timeBonus*0.35)*hm, health: hp, maxHealth: hp, color: '#6f6', type: 'fast', flash: 0, xpValue: 8, shootTimer: 0 });
+        enemies.push({ x, y, size: 14, speed: (1.65 + waveBonus*0.28 + timeBonus*0.22)*hm, health: hp, maxHealth: hp, color: '#6f6', type: 'fast', flash: 0, xpValue: 8, shootTimer: 0 });
     } else if (type === 'tank') {
         const hp = Math.floor((8 + wave * 2.4 + timeBonus * 3.5) * (runMode === 'hard' ? 1.25 : 1));
-        enemies.push({ x, y, size: 30, speed: (0.75 + waveBonus*0.18 + timeBonus*0.1)*hm, health: hp, maxHealth: hp, color: '#a4f', type: 'tank', flash: 0, xpValue: 25, shootTimer: 40 + Math.random()*40, elite: true });
+        enemies.push({ x, y, size: 30, speed: (0.55 + waveBonus*0.12 + timeBonus*0.07)*hm, health: hp, maxHealth: hp, color: '#a4f', type: 'tank', flash: 0, xpValue: 25, shootTimer: 40 + Math.random()*40, elite: true });
     } else if (type === 'swarm') {
-        enemies.push({ x, y, size: 9, speed: (2.8 + waveBonus*0.3 + timeBonus*0.25)*hm, health: 1, maxHealth: 1, color: '#fa0', type: 'swarm', flash: 0, xpValue: 4, shootTimer: 0 });
+        enemies.push({ x, y, size: 9, speed: (2.05 + waveBonus*0.2 + timeBonus*0.16)*hm, health: 1, maxHealth: 1, color: '#fa0', type: 'swarm', flash: 0, xpValue: 4, shootTimer: 0 });
     } else if (type === 'sniper') {
         const hp = 2 + Math.floor(wave * 0.6 + timeBonus);
-        enemies.push({ x, y, size: 16, speed: (1.0 + waveBonus*0.15)*hm, health: hp, maxHealth: hp, color: '#0cf', type: 'sniper', flash: 0, xpValue: 18, shootTimer: 60 + Math.random()*40, preferredRange: 420 });
+        enemies.push({ x, y, size: 16, speed: (0.75 + waveBonus*0.1)*hm, health: hp, maxHealth: hp, color: '#0cf', type: 'sniper', flash: 0, xpValue: 18, shootTimer: 60 + Math.random()*40, preferredRange: 420 });
     } else if (type === 'dasher') {
         const hp = 3 + Math.floor(wave * 1.1 + timeBonus * 1.2);
-        enemies.push({ x, y, size: 15, speed: (1.6 + waveBonus*0.3)*hm, health: hp, maxHealth: hp, color: '#f0a', type: 'dasher', flash: 0, xpValue: 16, shootTimer: 0, dashTimer: 40 + Math.random()*40, dashVx: 0, dashVy: 0, dashing: false, elite: true });
+        enemies.push({ x, y, size: 15, speed: (1.15 + waveBonus*0.2)*hm, health: hp, maxHealth: hp, color: '#f0a', type: 'dasher', flash: 0, xpValue: 16, shootTimer: 0, dashTimer: 40 + Math.random()*40, dashVx: 0, dashVy: 0, dashing: false, elite: true });
     } else if (type === 'shield') {
         const hp = Math.floor((5 + wave * 1.6 + timeBonus * 2) * (runMode === 'hard' ? 1.2 : 1));
         const sh = Math.floor(4 + wave * 0.8);
-        enemies.push({ x, y, size: 22, speed: (1.05 + waveBonus*0.2)*hm, health: hp, maxHealth: hp, color: '#4af', type: 'shield', flash: 0, xpValue: 22, shootTimer: 50, shield: sh, maxShield: sh, elite: true });
+        enemies.push({ x, y, size: 22, speed: (0.8 + waveBonus*0.14)*hm, health: hp, maxHealth: hp, color: '#4af', type: 'shield', flash: 0, xpValue: 22, shootTimer: 50, shield: sh, maxShield: sh, elite: true });
     } else if (type === 'splitter') {
         const hp = 4 + Math.floor(wave * 1.2 + timeBonus);
-        enemies.push({ x, y, size: 24, speed: (1.15 + waveBonus*0.25)*hm, health: hp, maxHealth: hp, color: '#f64', type: 'splitter', flash: 0, xpValue: 20, shootTimer: 0 });
+        enemies.push({ x, y, size: 24, speed: (0.85 + waveBonus*0.16)*hm, health: hp, maxHealth: hp, color: '#f64', type: 'splitter', flash: 0, xpValue: 20, shootTimer: 0 });
     } else {
         const hp = 3 + Math.floor(wave * 1.4 + timeBonus * 1.8);
-        enemies.push({ x, y, size: 20, speed: (1.35 + waveBonus*0.4 + timeBonus*0.25)*hm, health: hp, maxHealth: hp, color: '#f33', type: 'normal', flash: 0, xpValue: 12, shootTimer: 0 });
+        enemies.push({ x, y, size: 20, speed: (1.0 + waveBonus*0.25 + timeBonus*0.15)*hm, health: hp, maxHealth: hp, color: '#f33', type: 'normal', flash: 0, xpValue: 12, shootTimer: 0 });
     }
 }
 
@@ -1841,7 +1847,7 @@ function startNewGame() {
     gameState = 'playing';
     hardMult = runMode === 'hard' ? 1.25 : 1;
     resetGame();
-    const labels = { endless: 'MODE: ENDLESS', timed: 'MODE: 5-MIN RUSH', hard: 'MODE: HARDCORE' };
+    const labels = { endless: 'MODE: ENDLESS', timed: 'MODE: 8-MIN RUSH', hard: 'MODE: HARDCORE' };
     document.getElementById('modeLabel').textContent = labels[runMode] || '';
     updateMetaDisplay();
 }
@@ -1863,7 +1869,7 @@ function returnToMenu() {
 }
 
 function resetGame() {
-    player = { x: W/2, y: H/2, size: 18, speed: 5.8, health: 100, maxHealth: 100, score: 0, angle: -Math.PI/2, vx: 0, vy: 0, scrapBonus: 0 };
+    player = { x: W/2, y: H/2, size: 18, speed: 5.1, health: 100, maxHealth: 100, score: 0, angle: -Math.PI/2, vx: 0, vy: 0, scrapBonus: 0 };
     weapon = { level: 1, fireRate: 140, damage: 1, shots: 1, spread: 0 };
     playerLevel = 1; xp = 0; xpToNext = 50;
     xpMultiplier = 1; regenRate = 0; invulnTimer = 0;
@@ -2000,9 +2006,9 @@ function loop() {
             const rotSpeed = 0.085;
             if (keys['a'] || keys['arrowleft']) player.angle -= rotSpeed;
             if (keys['d'] || keys['arrowright']) player.angle += rotSpeed;
-            const thrust = player.speed * 0.20;
-            const reverseThrust = player.speed * 0.10;
-            const maxSpeed = player.speed * 1.35;
+            const thrust = player.speed * 0.16;
+            const reverseThrust = player.speed * 0.08;
+            const maxSpeed = player.speed * 1.2;
             const drag = 0.992;
             let thrusting = false;
             const fx = Math.cos(player.angle), fy = Math.sin(player.angle);
@@ -2041,8 +2047,8 @@ function loop() {
             if (keys['s'] || keys['arrowdown']) ty += 1;
             if (keys['a'] || keys['arrowleft']) tx -= 1;
             if (keys['d'] || keys['arrowright']) tx += 1;
-            const thrust = player.speed * 0.22;
-            const maxSpeed = player.speed * 1.15;
+            const thrust = player.speed * 0.17;
+            const maxSpeed = player.speed * 1.05;
             const drag = 0.965;
             if (tx || ty) {
                 const len = Math.hypot(tx, ty);
@@ -2662,11 +2668,11 @@ function loop() {
     document.getElementById('bossTimer').textContent = Math.max(0, Math.ceil(bossSpawnTimer));
 
     const calm = activeEvent && (activeEvent.type === 'calm_before' || activeEvent.type === 'supply_drop');
-    const spawnInterval = Math.max(140, (850 - wave*32 - Math.min(timeSurvived, SPEED_CAP_TIME)*1.4) / hardMult) * (calm ? 2.2 : 1);
+    const spawnInterval = Math.max(220, (1100 - wave*22 - Math.min(timeSurvived, SPEED_CAP_TIME)*0.9) / hardMult) * (calm ? 2.4 : 1);
     if (Date.now() - lastSpawn > spawnInterval) {
-        const count = calm ? 1 : Math.min(2 + Math.floor(wave/3) + Math.floor(Math.min(timeSurvived, SPEED_CAP_TIME)/35), 10);
+        const count = calm ? 1 : Math.min(1 + Math.floor(wave/4) + Math.floor(Math.min(timeSurvived, SPEED_CAP_TIME)/50), 7);
         for (let i = 0; i < count; i++) {
-            if (enemies.length < 55) {
+            if (enemies.length < 40) {
                 const r = Math.random();
                 const late = timeSurvived > 70;
                 const mid = timeSurvived > 35;
@@ -2680,13 +2686,13 @@ function loop() {
                 else spawnEnemy('normal');
             }
         }
-        if (!calm && Math.random() < 0.25 && enemies.length < 50) {
-            for (let k = 0; k < 4; k++) spawnEnemy('swarm');
+        if (!calm && Math.random() < 0.15 && enemies.length < 36) {
+            for (let k = 0; k < 2; k++) spawnEnemy('swarm');
         }
         lastSpawn = Date.now();
     }
 
-    if (Date.now() - lastAsteroidSpawn > 2600 - Math.min(1100, wave*35)) {
+    if (Date.now() - lastAsteroidSpawn > 3400 - Math.min(900, wave*25)) {
         if (asteroids.length < 14) spawnAsteroid();
         lastAsteroidSpawn = Date.now();
     }
