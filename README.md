@@ -2,6 +2,10 @@
 
 HTML5 top-down survival shooter — waves, XP level-ups, timed bosses, ship select, meta store, achievements, scrap economy, objectives, and rotating events.
 
+## Controls
+
+Asteroids-style: **A/D** rotate, **W** thrust, **S** reverse, **Space**/click fire forward, screen wrap.
+
 ## Play
 
 Open `index.html` in a modern browser, or play on GitHub Pages:
