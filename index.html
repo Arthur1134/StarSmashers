@@ -5,7 +5,8 @@
 <title>Star Smashers Survival</title>
 <style>
     body { margin:0; background:#000; font-family: 'Courier New', monospace; overflow:hidden; color:#0f0; }
-    canvas { display:block; margin:0 auto; image-rendering: pixelated; background:#000; }
+    canvas#game { display:block; margin:0 auto; image-rendering: pixelated; background:#000; position:relative; z-index:5; }
+    canvas:not(#menuBg) { display:block; margin:0 auto; image-rendering: pixelated; background:#000; position:relative; z-index:5; }
     #menu, #deathScreen, #creditsScreen, #achievementsScreen, #storeScreen, #shipScreen, #modeScreen, #pauseScreen, #howToScreen, #settingsScreen {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,25,0.97); display: none; flex-direction: column;
@@ -198,9 +199,69 @@
     .upgradeBtn.rare:hover { background:#f0f; color:#000; }
     .upgradeBtn.epic { border-color: #ff0; color: #ff0; }
     .upgradeBtn.epic:hover { background:#ff0; color:#000; }
+
+    #menuBg {
+        position: fixed; inset: 0; z-index: 1; pointer-events: none;
+        width: 100%; height: 100%; display: block;
+        background: #000;
+    }
+    #splash {
+        position: fixed; inset: 0; z-index: 200;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: transparent; cursor: pointer;
+    }
+    #splash .splash-title {
+        font-size: clamp(42px, 8vw, 72px); color: #0ff; letter-spacing: 8px;
+        text-shadow: 0 0 24px #0ff, 0 0 60px #06f; margin-bottom: 8px;
+        animation: splashPulse 2.2s ease-in-out infinite;
+    }
+    #splash .splash-sub {
+        font-size: clamp(16px, 3vw, 26px); color: #f66; letter-spacing: 4px; margin-bottom: 36px;
+        text-shadow: 0 0 12px #f00;
+    }
+    #splash .splash-ship {
+        width: 0; height: 0;
+        border-left: 18px solid transparent;
+        border-right: 18px solid transparent;
+        border-bottom: 48px solid #0ff;
+        filter: drop-shadow(0 0 12px #0ff);
+        margin-bottom: 40px;
+        transform: rotate(-20deg);
+        animation: splashBob 1.6s ease-in-out infinite;
+    }
+    #splash .splash-prompt {
+        font-size: 16px; color: #8ff; letter-spacing: 3px;
+        animation: splashBlink 1.2s step-end infinite;
+    }
+    @keyframes splashPulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.85; transform: scale(1.03); }
+    }
+    @keyframes splashBob {
+        0%, 100% { transform: rotate(-20deg) translateY(0); }
+        50% { transform: rotate(-20deg) translateY(-10px); }
+    }
+    @keyframes splashBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.25; }
+    }
+    #menu.space-menu, #creditsScreen.space-menu, #achievementsScreen.space-menu,
+    #storeScreen.space-menu, #shipScreen.space-menu, #modeScreen.space-menu,
+    #howToScreen.space-menu, #settingsScreen.space-menu {
+        background: rgba(0, 0, 18, 0.55);
+        backdrop-filter: blur(1px);
+    }
 </style>
 </head>
 <body>
+
+<canvas id="menuBg"></canvas>
+<div id="splash">
+    <div class="splash-title">STAR SMASHERS</div>
+    <div class="splash-sub">SURVIVAL</div>
+    <div class="splash-ship" aria-hidden="true"></div>
+    <div class="splash-prompt">CLICK OR PRESS ENTER</div>
+</div>
 
 <div id="highScore">HIGH SCORE: <span id="highScoreValue">0</span></div>
 <div id="creditsDisplay">CREDITS: <span id="creditsValue">0</span></div>
@@ -423,7 +484,7 @@
 </div>
 
 
-<div id="version-badge">v0.2.2</div>
+<div id="version-badge">v0.2.3</div>
 <div id="update-banner">
   <p id="update-banner-text">Update available</p>
   <button onclick="reloadForUpdate()">RELOAD</button>
@@ -436,7 +497,7 @@ const ctx = canvas.getContext('2d');
 const W = 2400, H = 1600;
 
 // ==================== VERSION / UPDATE CHECK ====================
-const GAME_VERSION = '0.2.2';
+const GAME_VERSION = '0.2.3';
 // Host version.json next to the game when online. Leave empty for local file play.
 const UPDATE_CHECK_URL = 'https://arthur1134.github.io/StarSmashers/version.json';
 let updateCheckDone = false;
@@ -1844,6 +1905,7 @@ document.addEventListener('keydown', e => {
 document.body.addEventListener('click', () => ensureAudio(), { once: true });
 
 function loop() {
+    drawMenuSpace(Date.now());
     requestAnimationFrame(loop);
     if (gameState === 'title') {
         document.getElementById('menu').style.display = 'flex';
@@ -2635,19 +2697,137 @@ function loop() {
     }
 }
 
+
+// ==================== SPLASH + MENU SPACE BG ====================
+let splashDone = false;
+const menuBg = document.getElementById('menuBg');
+const menuBgCtx = menuBg ? menuBg.getContext('2d') : null;
+let menuStars = [];
+let menuNebulas = [];
+let menuShipTrail = [];
+
+function resizeMenuBg() {
+    if (!menuBg) return;
+    menuBg.width = window.innerWidth;
+    menuBg.height = window.innerHeight;
+    seedMenuSpace();
+}
+function seedMenuSpace() {
+    if (!menuBg) return;
+    const w = menuBg.width, h = menuBg.height;
+    menuStars = [];
+    for (let i = 0; i < 140; i++) {
+        menuStars.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            z: 0.3 + Math.random() * 1.7,
+            s: 0.6 + Math.random() * 2.2,
+            tw: Math.random() * Math.PI * 2
+        });
+    }
+    menuNebulas = [
+        { x: w * 0.25, y: h * 0.35, r: Math.min(w, h) * 0.35, c: 'rgba(40,20,90,0.35)' },
+        { x: w * 0.72, y: h * 0.55, r: Math.min(w, h) * 0.28, c: 'rgba(10,50,100,0.30)' },
+        { x: w * 0.5, y: h * 0.75, r: Math.min(w, h) * 0.22, c: 'rgba(80,10,40,0.22)' }
+    ];
+}
+function menuOverlayVisible() {
+    if (!splashDone) return true;
+    const ids = ['menu','creditsScreen','achievementsScreen','storeScreen','shipScreen','modeScreen','howToScreen','settingsScreen'];
+    return ids.some(id => {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        return el.style.display === 'flex' || getComputedStyle(el).display === 'flex';
+    });
+}
+function drawMenuSpace(t) {
+    if (!menuBgCtx || !menuBg) return;
+    if (!menuOverlayVisible() && splashDone) return;
+    const w = menuBg.width, h = menuBg.height;
+    menuBgCtx.fillStyle = '#020208';
+    menuBgCtx.fillRect(0, 0, w, h);
+    for (const n of menuNebulas) {
+        const g = menuBgCtx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+        g.addColorStop(0, n.c);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        menuBgCtx.fillStyle = g;
+        menuBgCtx.beginPath();
+        menuBgCtx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        menuBgCtx.fill();
+    }
+    for (const s of menuStars) {
+        s.x += s.z * 0.35;
+        if (s.x > w + 4) s.x = -4;
+        const a = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t * 0.002 + s.tw));
+        menuBgCtx.globalAlpha = a;
+        menuBgCtx.fillStyle = '#cff';
+        menuBgCtx.fillRect(s.x, s.y, s.s, s.s);
+    }
+    menuBgCtx.globalAlpha = 1;
+    // drifting triangle "ship" silhouette
+    const sx = (w * 0.15 + (t * 0.04) % (w * 0.9));
+    const sy = h * 0.28 + Math.sin(t * 0.0015) * 30;
+    menuBgCtx.save();
+    menuBgCtx.translate(sx, sy);
+    menuBgCtx.rotate(-0.4);
+    menuBgCtx.fillStyle = 'rgba(0,255,255,0.55)';
+    menuBgCtx.beginPath();
+    menuBgCtx.moveTo(22, 0);
+    menuBgCtx.lineTo(-16, 12);
+    menuBgCtx.lineTo(-10, 0);
+    menuBgCtx.lineTo(-16, -12);
+    menuBgCtx.closePath();
+    menuBgCtx.fill();
+    menuBgCtx.restore();
+}
+function markSpaceMenus() {
+    ['menu','creditsScreen','achievementsScreen','storeScreen','shipScreen','modeScreen','howToScreen','settingsScreen'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('space-menu');
+    });
+}
+function dismissSplash() {
+    if (splashDone) return;
+    splashDone = true;
+    const sp = document.getElementById('splash');
+    if (sp) sp.style.display = 'none';
+    document.getElementById('menu').style.display = 'flex';
+    syncVersionBadge();
+    checkForUpdate();
+    updateControlUI();
+}
+function setupSplash() {
+    markSpaceMenus();
+    resizeMenuBg();
+    window.addEventListener('resize', resizeMenuBg);
+    const sp = document.getElementById('splash');
+    if (!sp) { splashDone = true; return; }
+    // Hide main menu until splash dismissed
+    document.getElementById('menu').style.display = 'none';
+    const go = () => dismissSplash();
+    sp.addEventListener('click', go);
+    window.addEventListener('keydown', function splashKey(e) {
+        if (splashDone) return;
+        if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
+            e.preventDefault();
+            go();
+        }
+    });
+    setTimeout(() => { if (!splashDone) dismissSplash(); }, 4500);
+}
+
 // Init volume UI
 setVolume(soundVolume);
 updateMuteUI();
-document.getElementById('menu').style.display = 'flex';
+if (typeof updateControlUI === 'function') updateControlUI();
 const _oh = document.getElementById('objectiveHud'); if (_oh) _oh.style.display = 'none';
-syncVersionBadge();
-checkForUpdate();
 updateXPBar();
 updateStatsUI();
 updateHealthBar();
 updateMetaDisplay();
 updateRecordsUI();
 renderAchievementsList();
+setupSplash();
 loop();
 </script>
 </body>
